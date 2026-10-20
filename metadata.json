@@ -1,0 +1,6 @@
+{
+  "name": "Bangla Motion Studio",
+  "description": "Professional typography animation and motion graphics editor for Bengali and English text with real-time effects and customizable presets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
