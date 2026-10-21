@@ -16,8 +16,8 @@ android {
     applicationId = "com.banglamotion.studio"
     minSdk = 24
     targetSdk = 36
-    versionCode = 2
-    versionName = "2.0"
+    versionCode = 4
+    versionName = "2.0 Super Final"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -98,7 +98,7 @@ dependencies {
   implementation(libs.androidx.compose.ui.graphics)
   implementation(libs.androidx.compose.ui.tooling.preview)
   implementation(libs.androidx.core.ktx)
-  // implementation(libs.androidx.datastore.preferences)
+  implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -107,6 +107,9 @@ dependencies {
   implementation(libs.coil.compose)
   implementation("androidx.media3:media3-exoplayer:1.5.1")
   implementation("androidx.media3:media3-ui:1.5.1")
+  implementation("androidx.media3:media3-transformer:1.5.1")
+  implementation("androidx.media3:media3-common:1.5.1")
+  implementation("androidx.media3:media3-muxer:1.5.1")
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:
   // implementation(libs.firebase.firestore)

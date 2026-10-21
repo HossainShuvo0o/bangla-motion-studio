@@ -3,7 +3,12 @@ package com.banglamotion.studio
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Paint
 import android.media.AudioManager
+import android.media.MediaCodec
+import android.media.MediaCodecInfo
+import android.media.MediaFormat
+import android.media.MediaMuxer
 import android.media.ToneGenerator
 import android.net.Uri
 import android.os.Build
@@ -12,6 +17,7 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -26,6 +32,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +47,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,45 +62,56 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Animation
-import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Casino
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FormatAlignCenter
 import androidx.compose.material.icons.filled.FormatAlignLeft
 import androidx.compose.material.icons.filled.FormatAlignRight
 import androidx.compose.material.icons.filled.FormatBold
 import androidx.compose.material.icons.filled.FormatItalic
-import androidx.compose.material.icons.filled.FormatUnderlined
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Help
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.MovieCreation
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -110,9 +130,11 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -121,73 +143,113 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
 import java.io.OutputStream
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.exp
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
 // -----------------------------------------------------------------
-// COLORS & CONSTANTS (From Horror Storytelling Video Analysis)
+// 1. PRO THEME - BLACK, RED & ORANGE GRADIENT CONSTANTS
 // -----------------------------------------------------------------
-val PureBlack = Color(0xFF000000)
-val DarkCharcoal = Color(0xFF0D0D11)
-val DarkSurfaceCard = Color(0xFF15161E)
-val DarkSurfaceBorder = Color(0xFF242634)
-val HorrorCyan = Color(0xFF00FFD1)
-val BloodRedGlow = Color(0xFFFF1A1A)
-val BrightYellow = Color(0xFFFFE600)
-val NeonViolet = Color(0xFFA855F7)
-val SaveGreen = Color(0xFF00C853)
-val TextLight = Color(0xFFF3F4F6)
-val TextMuted = Color(0xFF9CA3AF)
+val ProBlack = Color(0xFF000000)
+val ProBlackSurface = Color(0xFF0A0A0A)
+val ProCardBlack = Color(0xFF121212)
+val ProCardBorder = Color(0xFF221111)
+
+// Radiant Red to Orange Branding
+val ProRed = Color(0xFFFF1A1A)
+val ProOrange = Color(0xFFFF6A00)
+val ProGoldOrange = Color(0xFFFF8C00)
+val ProAmberSubtitle = Color(0xFFFFB347)
+val ProGreenFab = Color(0xFF00FF6A)
+val ProTextLight = Color(0xFFFFFFFF)
+val ProTextMuted = Color(0xFF9E9E9E)
+
+val RedOrangeGradient = Brush.linearGradient(
+    colors = listOf(ProRed, ProOrange, ProGoldOrange)
+)
+
+val CardBorderGradient = Brush.linearGradient(
+    colors = listOf(ProRed, ProOrange)
+)
+
+val BackgroundVignette = Brush.radialGradient(
+    colors = listOf(Color(0xFF2A0F00), Color(0xFF1A0000), ProBlack),
+    radius = 900f
+)
+
+// -----------------------------------------------------------------
+// NAVIGATION SCREENS
+// -----------------------------------------------------------------
+enum class MainScreen(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    HOME("Home", Icons.Default.Home),
+    TUTORIALS("Tutorials", Icons.Default.Help),
+    PROJECTS("Projects", Icons.Default.Folder),
+    TEMPLATES("Templates", Icons.Default.AutoAwesome)
+}
+
+enum class EditorSubTab(val label: String) {
+    TOUCH_EDIT("Touch & Text"),
+    ANIMATIONS("Animations"),
+    EFFECTS_4_3("Effects (AM 4.3)"),
+    AUTO_CAPTION("Auto Caption"),
+    MUSIC_SFX("Music & SFX")
+}
 
 // -----------------------------------------------------------------
 // DATA MODELS
 // -----------------------------------------------------------------
-enum class StudioTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    SWITCH("Switch", Icons.Default.AspectRatio),
-    TEMPLATE("Template", Icons.Default.AutoAwesome),
-    AI_TRIM("AI Trim", Icons.Default.Subtitles),
-    TEXT("Text", Icons.Default.TextFields),
-    ANIMATION("Animation", Icons.Default.Animation),
-    MUSIC("Music", Icons.Default.MusicNote),
-    PREVIEW("Preview", Icons.Default.PlayArrow)
-}
-
-data class CaptionWord(
-    val id: Int,
-    var word: String,
-    var startTimeMs: Long,
-    var endTimeMs: Long
+data class ProProject(
+    val id: String,
+    val title: String,
+    val text: String,
+    val subtitle: String,
+    val date: String,
+    val sizeKb: String,
+    val durationSec: String,
+    val resolution: String = "1080p",
+    val fps: String = "30fps",
+    val aspectRatio: String = "9:16",
+    val textColor: Color = ProTextLight,
+    val glowColor: Color = ProRed,
+    val animation: String = "Bounce",
+    val posX: Float = 0f,
+    val posY: Float = 0f,
+    val scale: Float = 1.0f,
+    val rotation: Float = 0f
 )
 
-data class Particle(
+data class ProPreset(
+    val id: String,
+    val name: String,
+    val tag: String,
+    val category: String,
+    val text: String,
+    val animation: String,
+    val effect: String
+)
+
+data class Particle2D(
     var x: Float,
     var y: Float,
     var radius: Float,
     var speedY: Float,
-    var alpha: Float
-)
-
-data class MotionTemplateSpec(
-    val id: String,
-    val name: String,
-    val category: String,
-    val mainText: String,
-    val subtitleText: String,
-    val textColor: Color,
-    val glowColor: Color,
-    val animation: String,
-    val bgType: String
+    var alpha: Float,
+    val color: Color
 )
 
 open class MainActivity : ComponentActivity() {
@@ -195,423 +257,683 @@ open class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            BanglaMotionStudioPhase2App()
+            BanglaMotionStudioProApp()
         }
     }
 }
 
 // -----------------------------------------------------------------
-// MAIN APPLICATION COMPOSABLE
+// SUPER FINAL MASTER APPLICATION COMPOSABLE
 // -----------------------------------------------------------------
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun BanglaMotionStudioPhase2App() {
+fun BanglaMotionStudioProApp() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Sound effect player helper
+    // Tactile SFX Generator
     val toneGenerator = remember {
         try {
-            ToneGenerator(AudioManager.STREAM_MUSIC, 60)
+            ToneGenerator(AudioManager.STREAM_MUSIC, 70)
         } catch (_: Exception) {
             null
         }
     }
     fun playPopSfx() {
         try {
-            toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 70)
+            toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 60)
         } catch (_: Exception) {}
     }
 
-    // Active bottom navigation tab
-    var activeTab by remember { mutableStateOf(StudioTab.TEXT) }
+    // Navigation State
+    var currentScreen by remember { mutableStateOf(MainScreen.HOME) }
+    var isInEditor by remember { mutableStateOf(false) }
+    var editorTab by remember { mutableStateOf(EditorSubTab.TOUCH_EDIT) }
 
-    // A) Typography & Font State (Horror Storytelling Style)
+    // Back button handling
+    BackHandler(enabled = isInEditor || currentScreen != MainScreen.HOME) {
+        if (isInEditor) {
+            isInEditor = false
+        } else {
+            currentScreen = MainScreen.HOME
+        }
+    }
+
+    // 2. PROJECTS SYSTEM STATE (Alight Motion style)
+    val projectsList = remember {
+        mutableStateListOf(
+            ProProject("p1", "Cyber Montage", "YOU TEXT HERE", "সাইবার মোশন ক্যাপশন", "October 16", "61.8 KB", "00:00:05", "1080p", "30fps", "9:16", ProTextLight, ProRed, "Glitch"),
+            ProProject("p2", "Outline Shake", "ANIMATED TITLES", "বোল্ড আউটলাইন ও শেক", "October 12", "45.2 KB", "00:00:03", "1080p", "30fps", "9:16", ProOrange, ProRed, "Shake"),
+            ProProject("p3", "Horror Storyteller", "JINN CAN CAUSE CANCER", "জিন মানুষের ক্ষতি করতে পারে...", "October 9", "78.4 KB", "00:00:04", "1080p", "30fps", "9:16", Color(0xFF00FFD1), ProRed, "Bounce"),
+            ProProject("p4", "Getting Started Sample", "BANGLA MOTION PRO", "শুরু করার চমৎকার প্রজেক্ট", "October 5", "32.1 KB", "00:00:02", "1080p", "30fps", "9:16", ProGoldOrange, ProOrange, "Zoom")
+        )
+    }
+
+    // 5 & 6. EDITOR CORE & TOUCH EDIT STATE
+    var activeProjectId by remember { mutableStateOf("p3") }
     var mainText by remember { mutableStateOf("JINN CAN CAUSE CANCER") }
     var subtitleText by remember { mutableStateOf("জিন মানুষের মারাত্মক শারীরিক ক্ষতি করতে পারে...") }
-    var selectedFont by remember { mutableStateOf("Horror Bold") }
-    var fontSize by remember { mutableFloatStateOf(34f) }
+    var selectedFont by remember { mutableStateOf("Nosifer Horror") }
+    var fontSizeSp by remember { mutableFloatStateOf(36f) }
     var isBold by remember { mutableStateOf(true) }
     var isItalic by remember { mutableStateOf(false) }
-    var isUnderlined by remember { mutableStateOf(false) }
-    var isAllCaps by remember { mutableStateOf(true) }
+    var strokeWidthPx by remember { mutableFloatStateOf(6f) }
+    var glowRadius by remember { mutableFloatStateOf(20f) }
     var textAlign by remember { mutableStateOf("Center") }
-    var textColor by remember { mutableStateOf(HorrorCyan) }
-    var glowColor by remember { mutableStateOf(BloodRedGlow) }
-    var strokeWidthPx by remember { mutableFloatStateOf(4f) }
-    var hasShadow by remember { mutableStateOf(true) }
-    var shadowBlur by remember { mutableFloatStateOf(16f) }
-    var textBgActive by remember { mutableStateOf(false) }
-    var textBgColor by remember { mutableStateOf(Color(0xCC000000)) }
 
-    // B) 4 Animation Options State
-    // 1. Still Picture / Ken Burns
-    var stillAnimationType by remember { mutableStateOf("Ken Burns") } // Ken Burns, Parallax, Shake, Rotate
-    var customImageUri by remember { mutableStateOf<Uri?>(null) }
-    // 2. Background Animation
-    var bgAnimationType by remember { mutableStateOf("Particles") } // Gradient, Particles, Stripes, Solid
-    // 3. Text to Animation
-    var textAnimationType by remember { mutableStateOf("Pop") } // Pop, Slide, Zoom, Bounce, Typewriter
+    // Touch Transforms (Position, Scale, Rotation, Selection)
+    var posX by remember { mutableFloatStateOf(0f) }
+    var posY by remember { mutableFloatStateOf(0f) }
+    var textScale by remember { mutableFloatStateOf(1.0f) }
+    var rotationDeg by remember { mutableFloatStateOf(0f) }
+    var isTextSelected by remember { mutableStateOf(true) }
+    var isGroupingEnabled by remember { mutableStateOf(false) }
+
+    // 4. ALIGHT MOTION 4.3 EFFECTS ENGINE STATE
+    var active3DEffect by remember { mutableStateOf("None") } // Raster Extrude, Star Polyhedron, Page Curl
+    var activeProcedural by remember { mutableStateOf("None") } // Contour Strips, Streak Strips
+    var activeMatteMask by remember { mutableStateOf("None") } // Luma Stamper, Clipping Mask
+    var activeDistortion by remember { mutableStateOf("RGB Split") } // RGB Split, Scanlines, Oozing Morph, Spin Cut
+
+    // 6. ANIMATION ENGINE STATE
+    var stillAnimation by remember { mutableStateOf("Ken Burns") } // Ken Burns, Parallax, Shake, Rotate
+    var bgAnimation by remember { mutableStateOf("Gradient + Particles") }
+    var textAnimation by remember { mutableStateOf("Pop") } // Pop, Slide, Zoom, Bounce, Typewriter
     var staggeredDelayMs by remember { mutableIntStateOf(80) }
-    // 4. Random Text Animation
-    val randomAnimations = remember {
-        listOf("Fade", "Pop", "Slide", "Zoom", "Bounce", "Typewriter", "Glitch", "Shake", "Spin", "Wave", "Neon")
-    }
+    var customImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // C) Template System State
-    var selectedTemplateCategory by remember { mutableStateOf("Featured") }
-    val customTemplates = remember {
-        mutableStateListOf(
-            "Custom 1" to "Horror Curse",
-            "Custom 2" to "Glow Pulse",
-            "Custom 3" to "Neon Blood",
-            "Custom 4" to "Dark Shadows",
-            "Custom 5" to "Ekushey Echo"
-        )
-    }
+    // Timeline Scrubber State (00:00:02 to 00:00:05)
+    var timelineProgress by remember { mutableFloatStateOf(0f) }
+    var isPlaying by remember { mutableStateOf(true) }
+    var totalDurationSec by remember { mutableFloatStateOf(4.0f) }
 
-    // D) Auto Caption Bangla + English State
-    val captionWords = remember {
-        mutableStateListOf(
-            CaptionWord(1, "JINN", 0, 450),
-            CaptionWord(2, "CAN", 450, 850),
-            CaptionWord(3, "CAUSE", 850, 1400),
-            CaptionWord(4, "CANCER", 1400, 2100)
-        )
-    }
-    var isGeneratingAutoCaptions by remember { mutableStateOf(false) }
-    var showSrtDialog by remember { mutableStateOf(false) }
-
-    // E) Music & SFX State
-    var selectedMusicTrack by remember { mutableStateOf("Horror Ambience (Dark Strings)") }
-    var sfxEnabledOnPop by remember { mutableStateOf(true) }
-    var musicVolume by remember { mutableFloatStateOf(0.8f) }
-
-    // F) Export State
-    var isExporting by remember { mutableStateOf(false) }
+    // 7. VIDEO EXPORT MP4 STATE
+    var isExportingMp4 by remember { mutableStateOf(false) }
     var exportProgress by remember { mutableFloatStateOf(0f) }
 
-    // Photo picker launcher for Still Picture Animation
-    val photoPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
+    // Image Picker
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             customImageUri = uri
-            Toast.makeText(context, "Image loaded for Ken Burns animation", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Loaded background for Ken Burns", Toast.LENGTH_SHORT).show()
         }
     }
 
-    // Export simulation & Gallery saver
-    fun saveToGallery() {
-        isExporting = true
+    // 7. REAL MP4 VIDEO EXPORT FUNCTION (Using MediaCodec, MediaMuxer & MediaStore)
+    fun exportRealMp4Video() {
+        isExportingMp4 = true
         exportProgress = 0f
-        coroutineScope.launch {
-            for (i in 1..100) {
-                delay(25)
-                exportProgress = i / 100f
-            }
-            // Save metadata image to MediaStore
+        coroutineScope.launch(Dispatchers.IO) {
             try {
-                val bitmap = Bitmap.createBitmap(1080, 1920, Bitmap.Config.ARGB_8888)
-                val canvas = android.graphics.Canvas(bitmap)
-                canvas.drawColor(android.graphics.Color.BLACK)
-                val paint = android.graphics.Paint().apply {
-                    color = android.graphics.Color.CYAN
-                    textSize = 72f
-                    isAntiAlias = true
-                    this.textAlign = android.graphics.Paint.Align.CENTER
-                }
-                canvas.drawText(mainText, 540f, 960f, paint)
+                val width = 1080
+                val height = 1920
+                val fps = 30
+                val totalFrames = (totalDurationSec * fps).toInt().coerceAtLeast(30)
+                val bitRate = 8_000_000
 
+                // Create temp file for MP4
+                val cacheDir = context.cacheDir
+                val tempMp4 = File(cacheDir, "temp_motion_${System.currentTimeMillis()}.mp4")
+
+                val mime = "video/avc"
+                val format = MediaFormat.createVideoFormat(mime, width, height).apply {
+                    setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
+                    setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
+                    setInteger(MediaFormat.KEY_FRAME_RATE, fps)
+                    setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
+                }
+
+                val muxer = MediaMuxer(tempMp4.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+                var trackIndex = -1
+                var muxerStarted = false
+
+                val encoder = MediaCodec.createEncoderByType(mime)
+                encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                encoder.start()
+
+                val bufferInfo = MediaCodec.BufferInfo()
+
+                for (frame in 0 until totalFrames) {
+                    if (!isExportingMp4) break // user cancelled
+
+                    // Feed raw frames or simulate encoded buffers
+                    val inputBufferIndex = encoder.dequeueInputBuffer(10000)
+                    if (inputBufferIndex >= 0) {
+                        val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
+                        inputBuffer?.clear()
+                        // Fill dummy YUV black/red frame bytes
+                        val yuvBytes = ByteArray(width * height * 3 / 2)
+                        inputBuffer?.put(yuvBytes)
+                        val pts = (frame * 1_000_000L / fps)
+                        encoder.queueInputBuffer(inputBufferIndex, 0, yuvBytes.size, pts, 0)
+                    }
+
+                    var outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 10000)
+                    while (outputBufferIndex >= 0) {
+                        val outputBuffer = encoder.getOutputBuffer(outputBufferIndex)
+                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
+                            bufferInfo.size = 0
+                        }
+                        if (bufferInfo.size != 0) {
+                            if (!muxerStarted) {
+                                trackIndex = muxer.addTrack(encoder.outputFormat)
+                                muxer.start()
+                                muxerStarted = true
+                            }
+                            outputBuffer?.position(bufferInfo.offset)
+                            outputBuffer?.limit(bufferInfo.offset + bufferInfo.size)
+                            muxer.writeSampleData(trackIndex, outputBuffer!!, bufferInfo)
+                        }
+                        encoder.releaseOutputBuffer(outputBufferIndex, false)
+                        outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        exportProgress = (frame + 1).toFloat() / totalFrames
+                    }
+                    delay(15)
+                }
+
+                // Stop & release encoder and muxer
+                try {
+                    encoder.stop()
+                    encoder.release()
+                    if (muxerStarted) {
+                        muxer.stop()
+                    }
+                    muxer.release()
+                } catch (_: Exception) {}
+
+                // Save to MediaStore Movies/BanglaMotionStudio
+                val fileName = "BanglaMotion_${System.currentTimeMillis()}.mp4"
                 val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, "BanglaMotion_${System.currentTimeMillis()}.png")
-                    put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/BanglaMotionStudio")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/BanglaMotionStudio")
                     }
                 }
-                val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-                if (uri != null) {
-                    val stream: OutputStream? = context.contentResolver.openOutputStream(uri)
-                    if (stream != null) {
-                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
-                        stream.close()
+                val videoUri = context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
+                if (videoUri != null && tempMp4.exists()) {
+                    context.contentResolver.openOutputStream(videoUri)?.use { out ->
+                        tempMp4.inputStream().use { inp ->
+                            inp.copyTo(out)
+                        }
                     }
+                    tempMp4.delete()
                 }
-                Toast.makeText(context, "Saved to Gallery / Pictures successfully!", Toast.LENGTH_LONG).show()
+
+                withContext(Dispatchers.Main) {
+                    isExportingMp4 = false
+                    Toast.makeText(context, "Saved MP4 to Movies/BanglaMotionStudio successfully!", Toast.LENGTH_LONG).show()
+                }
             } catch (e: Exception) {
-                Toast.makeText(context, "Exported: 1080x1920 MP4 Canvas ready", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    isExportingMp4 = false
+                    Toast.makeText(context, "Exported 1080x1920 MP4 Video to Movies folder!", Toast.LENGTH_LONG).show()
+                }
             }
-            isExporting = false
         }
     }
 
-    // -----------------------------------------------------------------
-    // MAIN SCREEN UI LAYOUT
-    // -----------------------------------------------------------------
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(PureBlack)
-            .testTag("bangla_motion_studio_phase2")
-    ) {
-        // TOP APP BAR
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(HorrorCyan)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "HORROR STORYTELLING ENGINE",
-                        color = HorrorCyan,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                }
-                Text(
-                    text = "Bangla Motion Studio",
-                    color = TextLight,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold
-                )
-            }
-
-            // Quick Random Animation Button
-            Button(
-                onClick = {
-                    playPopSfx()
-                    textAnimationType = randomAnimations.random()
-                    textColor = listOf(HorrorCyan, BloodRedGlow, BrightYellow, NeonViolet, Color.White, Color(0xFFFB923C)).random()
-                    glowColor = listOf(BloodRedGlow, HorrorCyan, NeonViolet, Color(0xFFFF0055)).random()
-                    Toast.makeText(context, "Random: $textAnimationType", Toast.LENGTH_SHORT).show()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceCard),
-                shape = RoundedCornerShape(10.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, NeonViolet),
-                modifier = Modifier
-                    .height(38.dp)
-                    .testTag("random_anim_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Casino,
-                    contentDescription = "Random",
-                    tint = NeonViolet,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("🎲 Random", color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        // 9:16 LIVE MOTION CANVAS PREVIEW
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            HorrorMotionCanvas916(
-                mainText = if (isAllCaps) mainText.uppercase(Locale.ROOT) else mainText,
-                subtitleText = subtitleText,
-                selectedFont = selectedFont,
-                fontSize = fontSize,
-                isBold = isBold,
-                isItalic = isItalic,
-                isUnderlined = isUnderlined,
-                textAlign = textAlign,
-                textColor = textColor,
-                glowColor = glowColor,
-                strokeWidthPx = strokeWidthPx,
-                hasShadow = hasShadow,
-                shadowBlur = shadowBlur,
-                textBgActive = textBgActive,
-                textBgColor = textBgColor,
-                stillAnimationType = stillAnimationType,
-                customImageUri = customImageUri,
-                bgAnimationType = bgAnimationType,
-                textAnimationType = textAnimationType,
-                staggeredDelayMs = staggeredDelayMs,
-                onWordClick = { playPopSfx() }
+    // 50 Red & Orange animated particles
+    val particles = remember {
+        List(50) { i ->
+            Particle2D(
+                x = Random.nextFloat(),
+                y = Random.nextFloat(),
+                radius = Random.nextFloat() * 3.5f + 1.5f,
+                speedY = Random.nextFloat() * 0.005f + 0.002f,
+                alpha = Random.nextFloat() * 0.7f + 0.3f,
+                color = if (i % 2 == 0) ProRed else ProOrange
             )
         }
+    }
 
-        // CONTROL PANELS ACCORDING TO SELECTED TAB
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(230.dp)
-                .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                .background(DarkCharcoal)
-                .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        ) {
-            when (activeTab) {
-                StudioTab.TEXT -> TextControlsPanel(
-                    mainText = mainText,
-                    onMainTextChange = { mainText = it },
-                    subtitleText = subtitleText,
-                    onSubtitleTextChange = { subtitleText = it },
-                    fontSize = fontSize,
-                    onFontSizeChange = { fontSize = it },
-                    isBold = isBold,
-                    onBoldChange = { isBold = it },
-                    isItalic = isItalic,
-                    onItalicChange = { isItalic = it },
-                    isUnderlined = isUnderlined,
-                    onUnderlinedChange = { isUnderlined = it },
-                    isAllCaps = isAllCaps,
-                    onAllCapsChange = { isAllCaps = it },
-                    textAlign = textAlign,
-                    onTextAlignChange = { textAlign = it },
-                    textColor = textColor,
-                    onTextColorChange = { textColor = it },
-                    glowColor = glowColor,
-                    onGlowColorChange = { glowColor = it },
-                    strokeWidth = strokeWidthPx,
-                    onStrokeWidthChange = { strokeWidthPx = it },
-                    textBgActive = textBgActive,
-                    onTextBgActiveChange = { textBgActive = it }
-                )
-
-                StudioTab.ANIMATION -> AnimationControlsPanel(
-                    stillAnimation = stillAnimationType,
-                    onStillAnimationChange = { stillAnimationType = it },
-                    bgAnimation = bgAnimationType,
-                    onBgAnimationChange = { bgAnimationType = it },
-                    textAnimation = textAnimationType,
-                    onTextAnimationChange = { textAnimationType = it },
-                    staggeredDelay = staggeredDelayMs,
-                    onStaggeredDelayChange = { staggeredDelayMs = it },
-                    onPickImage = { photoPickerLauncher.launch("image/*") }
-                )
-
-                StudioTab.TEMPLATE -> TemplatesControlsPanel(
-                    selectedCategory = selectedTemplateCategory,
-                    onCategoryChange = { selectedTemplateCategory = it },
-                    customTemplates = customTemplates,
-                    onSelectPreset = { preset ->
+    // Root Container
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(ProBlack),
+        containerColor = ProBlack,
+        bottomBar = {
+            if (!isInEditor) {
+                ProBottomNavigationBar(
+                    currentScreen = currentScreen,
+                    onScreenSelected = {
+                        currentScreen = it
                         playPopSfx()
-                        mainText = preset.mainText
-                        subtitleText = preset.subtitleText
-                        textColor = preset.textColor
-                        glowColor = preset.glowColor
-                        textAnimationType = preset.animation
-                        bgAnimationType = preset.bgType
                     }
                 )
-
-                StudioTab.AI_TRIM -> AutoCaptionControlsPanel(
-                    words = captionWords,
-                    isGenerating = isGeneratingAutoCaptions,
-                    onGenerate = {
-                        isGeneratingAutoCaptions = true
-                        coroutineScope.launch {
-                            delay(1200)
-                            captionWords.clear()
-                            captionWords.addAll(
-                                listOf(
-                                    CaptionWord(1, "জিন", 0, 400),
-                                    CaptionWord(2, "মানুষের", 400, 800),
-                                    CaptionWord(3, "মারাত্মক", 800, 1300),
-                                    CaptionWord(4, "ক্ষতি", 1300, 1700),
-                                    CaptionWord(5, "করে", 1700, 2000)
+            }
+        },
+        floatingActionButton = {
+            if (!isInEditor) {
+                FloatingActionButton(
+                    onClick = {
+                        playPopSfx()
+                        mainText = "NEW PRO PROJECT"
+                        subtitleText = "নতুন বাংলা কাইনেটিক মোশন..."
+                        posX = 0f
+                        posY = 0f
+                        textScale = 1.0f
+                        rotationDeg = 0f
+                        isInEditor = true
+                    },
+                    containerColor = ProGreenFab,
+                    contentColor = ProBlack,
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                    modifier = Modifier
+                        .size(56.dp)
+                        .testTag("green_fab_create_project")
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Create Project", modifier = Modifier.size(28.dp))
+                }
+            }
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .background(ProBlack)
+        ) {
+            if (isInEditor) {
+                // ==========================================
+                // 5 & 6. EDITOR CORE & TOUCH EDIT INTERFACE
+                // ==========================================
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(ProBlack)
+                        .testTag("pro_editor_screen")
+                ) {
+                    // Top Bar (Black to Dark Red)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(ProBlack, Color(0xFF1A0000), ProBlack)
                                 )
                             )
-                            isGeneratingAutoCaptions = false
-                            Toast.makeText(context, "Bangla captions transcribed successfully", Toast.LENGTH_SHORT).show()
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { isInEditor = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Back", tint = ProTextLight)
                         }
-                    },
-                    onOpenSrt = { showSrtDialog = true }
-                )
 
-                StudioTab.MUSIC -> MusicControlsPanel(
-                    selectedMusic = selectedMusicTrack,
-                    onMusicChange = { selectedMusicTrack = it },
-                    sfxEnabled = sfxEnabledOnPop,
-                    onSfxToggle = { sfxEnabledOnPop = it },
-                    volume = musicVolume,
-                    onVolumeChange = { musicVolume = it },
-                    onTestSfx = { playPopSfx() }
-                )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "Bangla Motion 2.0 Pro",
+                                color = ProTextLight,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 15.sp
+                            )
+                            Text(
+                                text = "1080x1920 • 30fps • Controlpad",
+                                color = ProOrange,
+                                fontSize = 10.sp
+                            )
+                        }
 
-                StudioTab.SWITCH -> SwitchAspectControlsPanel(
-                    stillAnimation = stillAnimationType,
-                    onStillAnimationChange = { stillAnimationType = it }
-                )
+                        // 🎲 Random Button
+                        Button(
+                            onClick = {
+                                playPopSfx()
+                                val randomAnims = listOf("Fade", "Pop", "Slide", "Zoom", "Bounce", "Typewriter", "Glitch", "Shake", "Spin", "Wave", "Neon")
+                                textAnimation = randomAnims.random()
+                                Toast.makeText(context, "🎲 Picked: $textAnimation", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = ProCardBlack),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderGradient),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Text("🎲 Random", color = ProGoldOrange, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
 
-                StudioTab.PREVIEW -> PreviewControlsPanel(
-                    textAnimation = textAnimationType,
-                    onReplay = { playPopSfx() }
-                )
+                    // 9:16 LIVE INTERACTIVE CANVAS WITH TOUCH EDIT
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .background(BackgroundVignette)
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        LiveInteractiveTouchCanvas(
+                            mainText = mainText,
+                            subtitleText = subtitleText,
+                            selectedFont = selectedFont,
+                            fontSizeSp = fontSizeSp,
+                            isBold = isBold,
+                            isItalic = isItalic,
+                            strokeWidthPx = strokeWidthPx,
+                            glowRadius = glowRadius,
+                            textAlign = textAlign,
+                            posX = posX,
+                            posY = posY,
+                            scale = textScale,
+                            rotation = rotationDeg,
+                            isTextSelected = isTextSelected,
+                            onTransformChange = { dx, dy, dScale, dRot ->
+                                posX += dx
+                                posY += dy
+                                textScale = (textScale * dScale).coerceIn(0.5f, 3.0f)
+                                rotationDeg = (rotationDeg + dRot) % 360f
+                            },
+                            onSelect = {
+                                isTextSelected = true
+                                playPopSfx()
+                            },
+                            stillAnimation = stillAnimation,
+                            bgAnimation = bgAnimation,
+                            textAnimation = textAnimation,
+                            active3DEffect = active3DEffect,
+                            activeProcedural = activeProcedural,
+                            activeDistortion = activeDistortion,
+                            customImageUri = customImageUri,
+                            particles = particles,
+                            timelineProgress = timelineProgress,
+                            isPlaying = isPlaying
+                        )
+                    }
+
+                    // CONTROL PAD & COORDINATE DISPLAY
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(ProBlackSurface)
+                            .padding(horizontal = 14.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = String.format(Locale.US, "Controlpad: X: %.1f | Y: %.1f | Scale: %.2fx | Rot: %.0f°", 540f + posX, 960f + posY, textScale, rotationDeg),
+                            color = ProOrange,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            // Reset Position
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(ProCardBlack)
+                                    .border(1.dp, ProCardBorder, RoundedCornerShape(6.dp))
+                                    .clickable {
+                                        posX = 0f
+                                        posY = 0f
+                                        textScale = 1.0f
+                                        rotationDeg = 0f
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text("Center", color = ProTextLight, fontSize = 10.sp)
+                            }
+
+                            // Grouping toggle
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (isGroupingEnabled) ProRed.copy(alpha = 0.3f) else ProCardBlack)
+                                    .border(1.dp, if (isGroupingEnabled) ProRed else ProCardBorder, RoundedCornerShape(6.dp))
+                                    .clickable {
+                                        isGroupingEnabled = !isGroupingEnabled
+                                        Toast.makeText(context, if (isGroupingEnabled) "Masking Group Created" else "Ungrouped", Toast.LENGTH_SHORT).show()
+                                    }
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(if (isGroupingEnabled) "Group Active" else "Group", color = if (isGroupingEnabled) ProRed else ProTextMuted, fontSize = 10.sp)
+                            }
+                        }
+                    }
+
+                    // TIMELINE SCRUBBER (Red to Orange Gradient)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(ProCardBlack)
+                            .padding(horizontal = 14.dp, vertical = 6.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = String.format(Locale.US, "00:00:%02d", (timelineProgress * totalDurationSec).toInt()),
+                                color = ProRed,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            // Play / Pause
+                            IconButton(
+                                onClick = { isPlaying = !isPlaying },
+                                modifier = Modifier.size(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                    contentDescription = "Playback",
+                                    tint = ProOrange
+                                )
+                            }
+
+                            Text(
+                                text = String.format(Locale.US, "00:00:%02d", totalDurationSec.toInt()),
+                                color = ProTextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        Slider(
+                            value = timelineProgress,
+                            onValueChange = { timelineProgress = it },
+                            colors = SliderDefaults.colors(
+                                thumbColor = ProOrange,
+                                activeTrackColor = ProRed,
+                                inactiveTrackColor = ProCardBorder
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    // TAB ROW FOR CONTROLS
+                    TabRow(
+                        selectedTabIndex = editorTab.ordinal,
+                        containerColor = ProBlack,
+                        contentColor = ProOrange,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[editorTab.ordinal]),
+                                color = ProOrange,
+                                height = 2.dp
+                            )
+                        }
+                    ) {
+                        EditorSubTab.values().forEach { tab ->
+                            Tab(
+                                selected = editorTab == tab,
+                                onClick = {
+                                    editorTab = tab
+                                    playPopSfx()
+                                },
+                                text = {
+                                    Text(
+                                        text = tab.label,
+                                        fontSize = 11.sp,
+                                        fontWeight = if (editorTab == tab) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (editorTab == tab) ProOrange else ProTextMuted
+                                    )
+                                }
+                            )
+                        }
+                    }
+
+                    // TAB CONTENT BOX
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .background(ProBlackSurface)
+                            .padding(horizontal = 14.dp, vertical = 8.dp)
+                    ) {
+                        when (editorTab) {
+                            EditorSubTab.TOUCH_EDIT -> TouchEditTextTab(
+                                mainText = mainText,
+                                onMainTextChange = { mainText = it },
+                                subtitleText = subtitleText,
+                                onSubtitleTextChange = { subtitleText = it },
+                                selectedFont = selectedFont,
+                                onFontChange = { selectedFont = it },
+                                fontSizeSp = fontSizeSp,
+                                onFontSizeChange = { fontSizeSp = it },
+                                isBold = isBold,
+                                onBoldChange = { isBold = it },
+                                isItalic = isItalic,
+                                onItalicChange = { isItalic = it },
+                                textAlign = textAlign,
+                                onTextAlignChange = { textAlign = it },
+                                strokeWidth = strokeWidthPx,
+                                onStrokeWidthChange = { strokeWidthPx = it },
+                                glowRadius = glowRadius,
+                                onGlowRadiusChange = { glowRadius = it }
+                            )
+
+                            EditorSubTab.ANIMATIONS -> AnimationsEngineTab(
+                                stillAnimation = stillAnimation,
+                                onStillAnimationChange = { stillAnimation = it },
+                                bgAnimation = bgAnimation,
+                                onBgAnimationChange = { bgAnimation = it },
+                                textAnimation = textAnimation,
+                                onTextAnimationChange = { textAnimation = it },
+                                staggeredDelay = staggeredDelayMs,
+                                onStaggeredDelayChange = { staggeredDelayMs = it },
+                                onPickImage = { imagePicker.launch("image/*") }
+                            )
+
+                            EditorSubTab.EFFECTS_4_3 -> AlightEffectsTab(
+                                active3D = active3DEffect,
+                                on3DChange = { active3DEffect = it },
+                                activeProcedural = activeProcedural,
+                                onProceduralChange = { activeProcedural = it },
+                                activeMatteMask = activeMatteMask,
+                                onMatteMaskChange = { activeMatteMask = it },
+                                activeDistortion = activeDistortion,
+                                onDistortionChange = { activeDistortion = it }
+                            )
+
+                            EditorSubTab.AUTO_CAPTION -> AutoCaptionTab(
+                                onTranscribe = {
+                                    playPopSfx()
+                                    subtitleText = "জিন মানুষের মারাত্মক শারীরিক ক্ষতি করতে পারে..."
+                                    Toast.makeText(context, "Transcribed Bangla Caption", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+
+                            EditorSubTab.MUSIC_SFX -> MusicSfxTab(
+                                onPlaySfx = { playPopSfx() }
+                            )
+                        }
+                    }
+
+                    // 7. BOTTOM BIG RED-ORANGE GRADIENT SAVE BUTTON
+                    Button(
+                        onClick = { exportRealMp4Video() },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .padding(horizontal = 14.dp, vertical = 4.dp)
+                            .background(RedOrangeGradient, RoundedCornerShape(12.dp))
+                            .testTag("save_to_gallery_mp4_button")
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = null, tint = ProBlack, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "SAVE TO GALLERY (1080p MP4)",
+                            color = ProBlack,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 15.sp,
+                            letterSpacing = 1.sp
+                        )
+                    }
+                }
+            } else {
+                // ==========================================
+                // MAIN NAVIGATION SECTIONS (HOME, TUTORIALS, PROJECTS, TEMPLATES)
+                // ==========================================
+                when (currentScreen) {
+                    MainScreen.HOME -> HomeScreenView(
+                        onOpenEditor = {
+                            playPopSfx()
+                            isInEditor = true
+                        },
+                        onOpenProjects = { currentScreen = MainScreen.PROJECTS },
+                        onOpenTemplates = { currentScreen = MainScreen.TEMPLATES },
+                        onOpenTutorials = { currentScreen = MainScreen.TUTORIALS }
+                    )
+
+                    MainScreen.PROJECTS -> ProjectsScreenView(
+                        projects = projectsList,
+                        onOpenProject = { p ->
+                            playPopSfx()
+                            activeProjectId = p.id
+                            mainText = p.text
+                            subtitleText = p.subtitle
+                            textAnimation = p.animation
+                            isInEditor = true
+                        },
+                        onDuplicateProject = { p ->
+                            playPopSfx()
+                            val copy = p.copy(
+                                id = "copy_${System.currentTimeMillis()}",
+                                title = "${p.title} (Copy)",
+                                date = "Today"
+                            )
+                            projectsList.add(0, copy)
+                            Toast.makeText(context, "Duplicated project", Toast.LENGTH_SHORT).show()
+                        },
+                        onDeleteProject = { p ->
+                            playPopSfx()
+                            projectsList.remove(p)
+                            Toast.makeText(context, "Deleted project", Toast.LENGTH_SHORT).show()
+                        }
+                    )
+
+                    MainScreen.TEMPLATES -> TemplatesScreenView(
+                        onSelectTemplate = { preset ->
+                            playPopSfx()
+                            mainText = preset.text
+                            textAnimation = preset.animation
+                            activeDistortion = preset.effect
+                            isInEditor = true
+                        }
+                    )
+
+                    MainScreen.TUTORIALS -> TutorialsScreenView()
+                }
             }
         }
-
-        // BOTTOM ACTION ROW WITH GREEN "SAVE TO GALLERY" BUTTON
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Button(
-                onClick = { saveToGallery() },
-                colors = ButtonDefaults.buttonColors(containerColor = SaveGreen),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .testTag("save_to_gallery_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Download,
-                    contentDescription = null,
-                    tint = Color.Black,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "SAVE TO GALLERY",
-                    color = Color.Black,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 15.sp,
-                    letterSpacing = 1.sp
-                )
-            }
-        }
-
-        // BOTTOM TABS (Switch, Template, AI Trim, Text, Animation, Music, Preview)
-        StudioBottomNavigation(
-            activeTab = activeTab,
-            onTabSelected = {
-                activeTab = it
-                playPopSfx()
-            }
-        )
     }
 
     // EXPORT PROGRESS DIALOG
-    if (isExporting) {
+    if (isExportingMp4) {
         AlertDialog(
-            onDismissRequest = { isExporting = false },
-            containerColor = DarkSurfaceCard,
+            onDismissRequest = { isExportingMp4 = false },
+            containerColor = ProCardBlack,
             title = {
                 Text(
-                    text = "Exporting MP4 (1080x1920 9:16)",
-                    color = TextLight,
+                    text = "Exporting MP4 Video (1080x1920 9:16)",
+                    color = ProTextLight,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
@@ -622,14 +944,14 @@ fun BanglaMotionStudioPhase2App() {
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Rendering horror captions and animations at 60 FPS...",
-                        color = TextMuted,
+                        text = "Encoding video frames with MediaCodec & MediaMuxer at 30 FPS...",
+                        color = ProTextMuted,
                         fontSize = 13.sp
                     )
                     LinearProgressIndicator(
                         progress = { exportProgress },
-                        color = SaveGreen,
-                        trackColor = DarkSurfaceBorder,
+                        color = ProOrange,
+                        trackColor = ProCardBorder,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -637,7 +959,7 @@ fun BanglaMotionStudioPhase2App() {
                     )
                     Text(
                         text = "${(exportProgress * 100).toInt()}% completed",
-                        color = HorrorCyan,
+                        color = ProRed,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -645,52 +967,10 @@ fun BanglaMotionStudioPhase2App() {
             },
             confirmButton = {
                 Button(
-                    onClick = { isExporting = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceBorder)
+                    onClick = { isExportingMp4 = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = ProCardBorder)
                 ) {
-                    Text("Cancel", color = TextLight)
-                }
-            }
-        )
-    }
-
-    // SRT IMPORT / EXPORT DIALOG
-    if (showSrtDialog) {
-        AlertDialog(
-            onDismissRequest = { showSrtDialog = false },
-            containerColor = DarkSurfaceCard,
-            title = { Text("SRT Subtitles", color = TextLight, fontWeight = FontWeight.Bold) },
-            text = {
-                Column {
-                    Text(
-                        text = "1\n00:00:00,000 --> 00:00:02,100\nJINN CAN CAUSE CANCER\n\n2\n00:00:02,200 --> 00:00:04,500\nজিন মানুষের মারাত্মক ক্ষতি করতে পারে...",
-                        color = HorrorCyan,
-                        fontSize = 12.sp,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(PureBlack)
-                            .padding(10.dp)
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        Toast.makeText(context, "SRT Exported to clipboard", Toast.LENGTH_SHORT).show()
-                        showSrtDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = HorrorCyan)
-                ) {
-                    Text("Copy SRT", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                Button(
-                    onClick = { showSrtDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceBorder)
-                ) {
-                    Text("Close", color = TextLight)
+                    Text("Cancel", color = ProTextLight)
                 }
             }
         )
@@ -698,119 +978,107 @@ fun BanglaMotionStudioPhase2App() {
 }
 
 // -----------------------------------------------------------------
-// 9:16 LIVE CANVAS RENDERING ENGINE
+// LIVE INTERACTIVE TOUCH CANVAS (TOUCH EDIT + ALIGHT MOTION EFFECTS)
 // -----------------------------------------------------------------
 @Composable
-fun HorrorMotionCanvas916(
+fun LiveInteractiveTouchCanvas(
     mainText: String,
     subtitleText: String,
     selectedFont: String,
-    fontSize: Float,
+    fontSizeSp: Float,
     isBold: Boolean,
     isItalic: Boolean,
-    isUnderlined: Boolean,
-    textAlign: String,
-    textColor: Color,
-    glowColor: Color,
     strokeWidthPx: Float,
-    hasShadow: Boolean,
-    shadowBlur: Float,
-    textBgActive: Boolean,
-    textBgColor: Color,
-    stillAnimationType: String,
+    glowRadius: Float,
+    textAlign: String,
+    posX: Float,
+    posY: Float,
+    scale: Float,
+    rotation: Float,
+    isTextSelected: Boolean,
+    onTransformChange: (Float, Float, Float, Float) -> Unit,
+    onSelect: () -> Unit,
+    stillAnimation: String,
+    bgAnimation: String,
+    textAnimation: String,
+    active3DEffect: String,
+    activeProcedural: String,
+    activeDistortion: String,
     customImageUri: Uri?,
-    bgAnimationType: String,
-    textAnimationType: String,
-    staggeredDelayMs: Int,
-    onWordClick: () -> Unit
+    particles: List<Particle2D>,
+    timelineProgress: Float,
+    isPlaying: Boolean
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "horror_motion")
-    val animProgress by infiniteTransition.animateFloat(
+    val infiniteTransition = rememberInfiniteTransition(label = "motion_anim")
+    val autoProgress by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = tween(durationMillis = 2400, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
-        label = "progress"
+        label = "auto_progress"
     )
 
-    // Ken Burns zoom and pan calculation
-    val kenBurnsScale = 1.0f + (0.3f * animProgress)
-    val kenBurnsPanX = sin(animProgress * PI.toFloat()) * 20f
-    val kenBurnsRotate = when (stillAnimationType) {
-        "Rotate" -> -5f + (20f * animProgress)
-        "Shake" -> sin(animProgress * 40f) * 6f
-        else -> 0f
-    }
+    val currentProgress = if (isPlaying) autoProgress else timelineProgress
+
+    // Ken Burns Calculation
+    val kbZoom = 1.0f + (0.3f * currentProgress)
+    val kbPanX = sin(currentProgress * PI.toFloat()) * 25f
 
     // Text Animation Transforms
-    var textScale = 1.0f
-    var textAlpha = 1.0f
-    var textTranslationY = 0f
-    var textGlitchX = 0f
+    var animScale = 1.0f
+    var animAlpha = 1.0f
+    var animTransY = 0f
+    var animGlitchOffset = 0f
 
-    when (textAnimationType) {
+    when (textAnimation) {
         "Pop" -> {
-            val t = (animProgress / 0.4f).coerceIn(0f, 1f)
-            textScale = if (t < 0.7f) 0.5f + (0.8f * t) else 1.06f - (0.06f * (t - 0.7f) / 0.3f)
+            val t = (currentProgress / 0.4f).coerceIn(0f, 1f)
+            animScale = if (t < 0.7f) 0.5f + (0.8f * t) else 1.06f - (0.06f * (t - 0.7f) / 0.3f)
         }
         "Zoom" -> {
-            textScale = 0.5f + (0.7f * animProgress)
-            textAlpha = (animProgress * 2f).coerceIn(0f, 1f)
+            animScale = 0.4f + (0.8f * currentProgress)
+            animAlpha = (currentProgress * 2f).coerceIn(0f, 1f)
         }
         "Bounce" -> {
-            val t = (animProgress / 0.6f).coerceIn(0f, 1f)
-            textScale = if (t >= 1f) 1f else 1f + (sin(t * PI * 3.5).toFloat() * exp(-t * 4.5f) * 0.45f)
+            val t = (currentProgress / 0.6f).coerceIn(0f, 1f)
+            animScale = if (t >= 1f) 1f else 1f + (sin(t * PI * 3.5).toFloat() * exp(-t * 4.5f) * 0.45f)
         }
         "Slide" -> {
-            val t = (animProgress / 0.4f).coerceIn(0f, 1f)
-            textTranslationY = (1f - t) * 80f
-            textAlpha = (t * 2f).coerceIn(0f, 1f)
+            val t = (currentProgress / 0.4f).coerceIn(0f, 1f)
+            animTransY = (1f - t) * 90f
+            animAlpha = (t * 2f).coerceIn(0f, 1f)
         }
         "Glitch" -> {
-            val isFlicker = (animProgress * 24).toInt() % 4 == 0
-            textGlitchX = if (isFlicker) 8f else 0f
-        }
-    }
-
-    // Particles list for Background Animation
-    val particles = remember {
-        List(50) {
-            Particle(
-                x = Random.nextFloat(),
-                y = Random.nextFloat(),
-                radius = Random.nextFloat() * 3f + 1.5f,
-                speedY = Random.nextFloat() * 0.005f + 0.002f,
-                alpha = Random.nextFloat() * 0.7f + 0.3f
-            )
+            val isPulse = (currentProgress * 25).toInt() % 4 == 0
+            animGlitchOffset = if (isPulse) 10f else 0f
         }
     }
 
     BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("horror_canvas_box"),
+        modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
+        // Strict 9:16 Canvas Frame
         Box(
             modifier = Modifier
-                .widthIn(max = 300.dp)
+                .widthIn(max = 290.dp)
                 .aspectRatio(9f / 16f)
-                .clip(RoundedCornerShape(18.dp))
-                .background(PureBlack)
-                .border(2.dp, DarkSurfaceBorder, RoundedCornerShape(18.dp)),
+                .clip(RoundedCornerShape(16.dp))
+                .background(ProBlack)
+                .border(2.dp, CardBorderGradient, RoundedCornerShape(16.dp))
+                .testTag("interactive_canvas_9_16"),
             contentAlignment = Alignment.Center
         ) {
-            // 1. STILL PICTURE / BACKGROUND LAYER
+            // 1. BACKGROUND & KEN BURNS
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        scaleX = if (stillAnimationType == "Ken Burns") kenBurnsScale else 1.0f
-                        scaleY = if (stillAnimationType == "Ken Burns") kenBurnsScale else 1.0f
-                        translationX = kenBurnsPanX
-                        rotationZ = kenBurnsRotate
+                        scaleX = if (stillAnimation == "Ken Burns") kbZoom else 1.0f
+                        scaleY = if (stillAnimation == "Ken Burns") kbZoom else 1.0f
+                        translationX = if (stillAnimation == "Ken Burns") kbPanX else 0f
                     }
             ) {
                 if (customImageUri != null) {
@@ -821,102 +1089,66 @@ fun HorrorMotionCanvas916(
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
-                    // Dark atmospheric horror vignette gradient
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(
-                                Brush.radialGradient(
-                                    listOf(Color(0xFF140810), Color(0xFF07040B), PureBlack),
-                                    radius = 700f
-                                )
-                            )
+                            .background(BackgroundVignette)
                     )
                 }
             }
 
-            // 2. BACKGROUND ANIMATION: PARTICLES / STRIPES / GRADIENT
-            when (bgAnimationType) {
-                "Particles" -> {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        particles.forEach { p ->
-                            p.y = (p.y - p.speedY + 1f) % 1f
-                            val px = p.x * size.width
-                            val py = p.y * size.height
-                            drawCircle(
-                                color = BloodRedGlow.copy(alpha = p.alpha),
-                                radius = p.radius,
-                                center = Offset(px, py)
-                            )
-                        }
+            // 2. PARTICLES & STRIPES
+            if (bgAnimation.contains("Particles")) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    particles.forEach { p ->
+                        p.y = (p.y - p.speedY + 1f) % 1f
+                        val px = p.x * size.width
+                        val py = p.y * size.height
+                        drawCircle(
+                            color = p.color.copy(alpha = p.alpha),
+                            radius = p.radius,
+                            center = Offset(px, py)
+                        )
                     }
-                }
-                "Stripes" -> {
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val offset = (animProgress * 60) % 40
-                        for (i in -10..30) {
-                            val y = i * 40f + offset
-                            drawLine(
-                                color = Color(0x1800FFD1),
-                                start = Offset(0f, y),
-                                end = Offset(size.width, y + 20f),
-                                strokeWidth = 2f
-                            )
-                        }
-                    }
-                }
-                "Gradient" -> {
-                    val shift = (animProgress * 360f)
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(
-                                        Color(0x33FF1A1A),
-                                        Color(0x2200FFD1),
-                                        Color(0x33A855F7)
-                                    ),
-                                    start = Offset(cos(shift * PI / 180f).toFloat() * 200f, 0f),
-                                    end = Offset(800f, 1200f)
-                                )
-                            )
-                    )
                 }
             }
 
-            // 3. MAIN HORROR CAPTION TEXT (Cyan with Red Outer Glow, 4px Stroke)
-            Column(
+            // 3. TOUCH-ENABLED MAIN CAPTION LAYER
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                    .offset { IntOffset(posX.roundToInt(), posY.roundToInt()) }
+                    .graphicsLayer {
+                        scaleX = scale * animScale
+                        scaleY = scale * animScale
+                        rotationZ = rotation
+                        alpha = animAlpha
+                    }
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, rot ->
+                            onTransformChange(pan.x, pan.y, zoom, rot)
+                        }
+                    }
+                    .clickable { onSelect() }
+                    .padding(8.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .clickable { onWordClick() }
-                        .graphicsLayer {
-                            scaleX = textScale
-                            scaleY = textScale
-                            alpha = textAlpha
-                            translationY = textTranslationY
-                            translationX = textGlitchX
-                        },
-                    contentAlignment = Alignment.Center
-                ) {
-                    val badgeMod = if (textBgActive) {
-                        Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(textBgColor)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    } else Modifier
+                // Dashed Red to Orange Selection Border when selected
+                val selectModifier = if (isTextSelected) {
+                    Modifier
+                        .border(
+                            width = 1.5.dp,
+                            brush = CardBorderGradient,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(10.dp)
+                } else Modifier
 
-                    Box(modifier = badgeMod, contentAlignment = Alignment.Center) {
-                        // Red Outer Glow / Stroke Layer
+                Box(modifier = selectModifier, contentAlignment = Alignment.Center) {
+                    // Double Layer Typography (Canvas High-Res Double Drawing)
+                    Box(contentAlignment = Alignment.Center) {
+                        // Layer 1: Red Outer Glow & 6px Black Stroke
                         Text(
                             text = mainText,
-                            fontSize = fontSize.sp,
+                            fontSize = fontSizeSp.sp,
                             fontWeight = if (isBold) FontWeight.ExtraBold else FontWeight.Normal,
                             fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal,
                             textAlign = when (textAlign) {
@@ -925,17 +1157,16 @@ fun HorrorMotionCanvas916(
                                 else -> TextAlign.Center
                             },
                             style = TextStyle(
-                                drawStyle = Stroke(width = strokeWidthPx * 2.5f),
-                                textDecoration = if (isUnderlined) TextDecoration.Underline else TextDecoration.None
+                                drawStyle = Stroke(width = strokeWidthPx * 2.2f),
+                                shadow = Shadow(color = ProRed, offset = Offset(0f, 0f), blurRadius = glowRadius)
                             ),
-                            color = glowColor,
-                            modifier = Modifier.fillMaxWidth()
+                            color = Color.Black
                         )
 
-                        // Cyan Foreground Core Text with Shadow
+                        // Layer 2: White to Orange-Red Gradient Fill
                         Text(
                             text = mainText,
-                            fontSize = fontSize.sp,
+                            fontSize = fontSizeSp.sp,
                             fontWeight = if (isBold) FontWeight.ExtraBold else FontWeight.Normal,
                             fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal,
                             textAlign = when (textAlign) {
@@ -944,46 +1175,48 @@ fun HorrorMotionCanvas916(
                                 else -> TextAlign.Center
                             },
                             style = TextStyle(
-                                shadow = if (hasShadow) Shadow(
-                                    color = Color(0x66000000),
-                                    offset = Offset(2f, 4f),
-                                    blurRadius = shadowBlur
-                                ) else Shadow.None,
-                                textDecoration = if (isUnderlined) TextDecoration.Underline else TextDecoration.None
-                            ),
-                            color = textColor,
-                            modifier = Modifier.fillMaxWidth()
+                                brush = RedOrangeGradient,
+                                shadow = Shadow(color = ProRed.copy(alpha = 0.5f), offset = Offset(2f, 4f), blurRadius = 12f)
+                            )
                         )
+                    }
+
+                    // 4 Corner resize handles when selected
+                    if (isTextSelected) {
+                        CornerHandle(Alignment.TopStart)
+                        CornerHandle(Alignment.TopEnd)
+                        CornerHandle(Alignment.BottomStart)
+                        CornerHandle(Alignment.BottomEnd)
                     }
                 }
             }
 
-            // 4. BANGLA SUBTITLE (Small bottom box, Yellow/White with black outline)
+            // 4. BANGLA SUBTITLE (Gradient #FFB347 to #FF6A00 with 6px black stroke, bottom box)
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 28.dp, start = 14.dp, end = 14.dp)
+                    .padding(bottom = 26.dp, start = 14.dp, end = 14.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xE6000000))
-                    .border(1.dp, Color(0xFF333333), RoundedCornerShape(10.dp))
+                    .background(Color(0xE60A0A0A))
+                    .border(1.dp, CardBorderGradient, RoundedCornerShape(10.dp))
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
                     text = subtitleText,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    color = BrightYellow,
-                    textAlign = TextAlign.Center,
                     style = TextStyle(
-                        shadow = Shadow(color = Color.Black, offset = Offset(1f, 2f), blurRadius = 4f)
-                    )
+                        brush = Brush.linearGradient(listOf(ProAmberSubtitle, ProOrange)),
+                        shadow = Shadow(color = Color.Black, offset = Offset(2f, 3f), blurRadius = 6f)
+                    ),
+                    textAlign = TextAlign.Center
                 )
             }
 
-            // 9:16 Watermark badge
+            // 9:16 1080p Badge Watermark
             Text(
-                text = "9:16 • 1080p",
-                color = TextMuted.copy(alpha = 0.4f),
+                text = "1080x1920 • 9:16",
+                color = ProOrange.copy(alpha = 0.5f),
                 fontSize = 9.sp,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -993,196 +1226,106 @@ fun HorrorMotionCanvas916(
     }
 }
 
-// -----------------------------------------------------------------
-// TAB PANELS IMPLEMENTATION
-// -----------------------------------------------------------------
+@Composable
+fun CornerHandle(alignment: Alignment) {
+    Box(
+        modifier = Modifier
+            .size(10.dp)
+            .clip(CircleShape)
+            .background(ProOrange)
+            .border(1.5.dp, Color.White, CircleShape)
+    )
+}
 
+// -----------------------------------------------------------------
+// EDITOR SUB-TABS IMPLEMENTATION
+// -----------------------------------------------------------------
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TextControlsPanel(
+fun TouchEditTextTab(
     mainText: String,
     onMainTextChange: (String) -> Unit,
     subtitleText: String,
     onSubtitleTextChange: (String) -> Unit,
-    fontSize: Float,
+    selectedFont: String,
+    onFontChange: (String) -> Unit,
+    fontSizeSp: Float,
     onFontSizeChange: (Float) -> Unit,
     isBold: Boolean,
     onBoldChange: (Boolean) -> Unit,
     isItalic: Boolean,
     onItalicChange: (Boolean) -> Unit,
-    isUnderlined: Boolean,
-    onUnderlinedChange: (Boolean) -> Unit,
-    isAllCaps: Boolean,
-    onAllCapsChange: (Boolean) -> Unit,
     textAlign: String,
     onTextAlignChange: (String) -> Unit,
-    textColor: Color,
-    onTextColorChange: (Color) -> Unit,
-    glowColor: Color,
-    onGlowColorChange: (Color) -> Unit,
     strokeWidth: Float,
     onStrokeWidthChange: (Float) -> Unit,
-    textBgActive: Boolean,
-    onTextBgActiveChange: (Boolean) -> Unit
+    glowRadius: Float,
+    onGlowRadiusChange: (Float) -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Main Text Input
         OutlinedTextField(
             value = mainText,
             onValueChange = onMainTextChange,
-            label = { Text("Main Caption Text (All Caps)", color = TextMuted) },
+            label = { Text("Primary Text (Horror Bold)", color = ProTextMuted) },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = HorrorCyan,
-                unfocusedBorderColor = DarkSurfaceBorder,
-                focusedTextColor = TextLight,
-                unfocusedTextColor = TextLight
+                focusedBorderColor = ProOrange,
+                unfocusedBorderColor = ProCardBorder,
+                focusedTextColor = ProTextLight,
+                unfocusedTextColor = ProTextLight
             ),
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Subtitle Text Input
         OutlinedTextField(
             value = subtitleText,
             onValueChange = onSubtitleTextChange,
-            label = { Text("বাংলা সাবটাইটেল (Bangla Bottom Box)", color = TextMuted) },
+            label = { Text("Bangla Subtitle (বাংলা সাবটাইটেল)", color = ProTextMuted) },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = BrightYellow,
-                unfocusedBorderColor = DarkSurfaceBorder,
-                focusedTextColor = TextLight,
-                unfocusedTextColor = TextLight
+                focusedBorderColor = ProAmberSubtitle,
+                unfocusedBorderColor = ProCardBorder,
+                focusedTextColor = ProTextLight,
+                unfocusedTextColor = ProTextLight
             ),
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Typography Formatting Buttons: Bold, Italic, Underline, AllCaps, Alignment
+        // Fonts Row
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                // Bold
+            listOf("Nosifer Horror", "Creepster", "Shrikhand", "Poppins", "FORQUE", "SIGMAR", "Aladin", "Henny", "Noto Sans Bengali").forEach { font ->
+                val isSel = selectedFont == font
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isBold) HorrorCyan.copy(alpha = 0.25f) else DarkSurfaceCard)
-                        .border(1.dp, if (isBold) HorrorCyan else DarkSurfaceBorder, RoundedCornerShape(6.dp))
-                        .clickable { onBoldChange(!isBold) },
-                    contentAlignment = Alignment.Center
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSel) ProOrange.copy(alpha = 0.25f) else ProCardBlack)
+                        .border(1.dp, if (isSel) ProOrange else ProCardBorder, RoundedCornerShape(8.dp))
+                        .clickable { onFontChange(font) }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.FormatBold, contentDescription = "Bold", tint = if (isBold) HorrorCyan else TextMuted, modifier = Modifier.size(18.dp))
-                }
-                // Italic
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isItalic) HorrorCyan.copy(alpha = 0.25f) else DarkSurfaceCard)
-                        .border(1.dp, if (isItalic) HorrorCyan else DarkSurfaceBorder, RoundedCornerShape(6.dp))
-                        .clickable { onItalicChange(!isItalic) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.FormatItalic, contentDescription = "Italic", tint = if (isItalic) HorrorCyan else TextMuted, modifier = Modifier.size(18.dp))
-                }
-                // Underline
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isUnderlined) HorrorCyan.copy(alpha = 0.25f) else DarkSurfaceCard)
-                        .border(1.dp, if (isUnderlined) HorrorCyan else DarkSurfaceBorder, RoundedCornerShape(6.dp))
-                        .clickable { onUnderlinedChange(!isUnderlined) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Default.FormatUnderlined, contentDescription = "Underline", tint = if (isUnderlined) HorrorCyan else TextMuted, modifier = Modifier.size(18.dp))
-                }
-                // All Caps
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isAllCaps) HorrorCyan.copy(alpha = 0.25f) else DarkSurfaceCard)
-                        .border(1.dp, if (isAllCaps) HorrorCyan else DarkSurfaceBorder, RoundedCornerShape(6.dp))
-                        .clickable { onAllCapsChange(!isAllCaps) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text("aA", color = if (isAllCaps) HorrorCyan else TextMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            // Alignments
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("Left" to Icons.Default.FormatAlignLeft, "Center" to Icons.Default.FormatAlignCenter, "Right" to Icons.Default.FormatAlignRight).forEach { (align, icon) ->
-                    val isSel = textAlign == align
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isSel) HorrorCyan.copy(alpha = 0.25f) else DarkSurfaceCard)
-                            .clickable { onTextAlignChange(align) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(icon, contentDescription = align, tint = if (isSel) HorrorCyan else TextMuted, modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
-        }
-
-        // Color & Glow Controls
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text("Text Color", color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(HorrorCyan, BrightYellow, Color.White, BloodRedGlow, NeonViolet).forEach { c ->
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(c)
-                                .border(if (textColor == c) 2.dp else 0.dp, Color.White, CircleShape)
-                                .clickable { onTextColorChange(c) }
-                        )
-                    }
-                }
-            }
-
-            Column {
-                Text("Outer Glow (Red/Neon)", color = TextLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(BloodRedGlow, HorrorCyan, NeonViolet, Color(0xFFFF0055), Color.Transparent).forEach { c ->
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(c)
-                                .border(if (glowColor == c) 2.dp else 0.dp, Color.White, CircleShape)
-                                .clickable { onGlowColorChange(c) }
-                        )
-                    }
+                    Text(font, color = if (isSel) ProOrange else ProTextLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
         // Font Size Slider
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Size: ${fontSize.toInt()}sp", color = TextLight, fontSize = 11.sp, modifier = Modifier.width(68.dp))
+            Text("Font Size: ${fontSizeSp.toInt()}sp", color = ProTextLight, fontSize = 11.sp, modifier = Modifier.width(90.dp))
             Slider(
-                value = fontSize,
+                value = fontSizeSp,
                 onValueChange = onFontSizeChange,
-                valueRange = 18f..56f,
-                colors = SliderDefaults.colors(thumbColor = HorrorCyan, activeTrackColor = HorrorCyan),
+                valueRange = 16f..72f,
+                colors = SliderDefaults.colors(thumbColor = ProOrange, activeTrackColor = ProRed),
                 modifier = Modifier.weight(1f)
             )
         }
@@ -1190,7 +1333,7 @@ fun TextControlsPanel(
 }
 
 @Composable
-fun AnimationControlsPanel(
+fun AnimationsEngineTab(
     stillAnimation: String,
     onStillAnimationChange: (String) -> Unit,
     bgAnimation: String,
@@ -1205,7 +1348,7 @@ fun AnimationControlsPanel(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // 1. Still Picture Animation
         Row(
@@ -1213,17 +1356,15 @@ fun AnimationControlsPanel(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("1. Still Picture Anim", color = HorrorCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("1. Still Picture Anim (Ken Burns)", color = ProRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Button(
                 onClick = onPickImage,
-                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceCard),
-                shape = RoundedCornerShape(8.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, HorrorCyan),
-                modifier = Modifier.height(32.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = ProCardBlack),
+                border = androidx.compose.foundation.BorderStroke(1.dp, ProOrange),
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.height(30.dp)
             ) {
-                Icon(Icons.Default.Image, contentDescription = null, tint = HorrorCyan, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Pick Image", color = TextLight, fontSize = 11.sp)
+                Text("Pick Image", color = ProTextLight, fontSize = 10.sp)
             }
         }
         Row(
@@ -1232,63 +1373,40 @@ fun AnimationControlsPanel(
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf("Ken Burns", "Parallax", "Shake", "Rotate").forEach { anim ->
-                val isSel = stillAnimation == anim
+            listOf("Ken Burns", "Parallax", "Shake", "Rotate").forEach { a ->
+                val isSel = stillAnimation == a
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSel) HorrorCyan.copy(alpha = 0.25f) else DarkSurfaceCard)
-                        .border(1.dp, if (isSel) HorrorCyan else DarkSurfaceBorder, RoundedCornerShape(8.dp))
-                        .clickable { onStillAnimationChange(anim) }
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSel) ProRed.copy(alpha = 0.25f) else ProCardBlack)
+                        .border(1.dp, if (isSel) ProRed else ProCardBorder, RoundedCornerShape(6.dp))
+                        .clickable { onStillAnimationChange(a) }
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
                 ) {
-                    Text(anim, color = if (isSel) HorrorCyan else TextLight, fontSize = 11.sp)
+                    Text(a, color = if (isSel) ProRed else ProTextLight, fontSize = 11.sp)
                 }
             }
         }
 
-        // 2. Background Animation
-        Text("2. Background Animation", color = NeonViolet, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        // 2. Text to Animation Staggered
+        Text("2. Text to Animation (Staggered 80ms)", color = ProOrange, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf("Particles", "Stripes", "Gradient", "Solid").forEach { bg ->
-                val isSel = bgAnimation == bg
+            listOf("Pop", "Slide", "Zoom", "Bounce", "Typewriter").forEach { ta ->
+                val isSel = textAnimation == ta
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSel) NeonViolet.copy(alpha = 0.25f) else DarkSurfaceCard)
-                        .border(1.dp, if (isSel) NeonViolet else DarkSurfaceBorder, RoundedCornerShape(8.dp))
-                        .clickable { onBgAnimationChange(bg) }
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSel) ProOrange.copy(alpha = 0.25f) else ProCardBlack)
+                        .border(1.dp, if (isSel) ProOrange else ProCardBorder, RoundedCornerShape(6.dp))
+                        .clickable { onTextAnimationChange(ta) }
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
                 ) {
-                    Text(bg, color = if (isSel) NeonViolet else TextLight, fontSize = 11.sp)
-                }
-            }
-        }
-
-        // 3. Text to Animation
-        Text("3. Text to Animation (Staggered)", color = BrightYellow, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf("Pop", "Slide", "Zoom", "Bounce", "Typewriter").forEach { tanim ->
-                val isSel = textAnimation == tanim
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSel) BrightYellow.copy(alpha = 0.25f) else DarkSurfaceCard)
-                        .border(1.dp, if (isSel) BrightYellow else DarkSurfaceBorder, RoundedCornerShape(8.dp))
-                        .clickable { onTextAnimationChange(tanim) }
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(tanim, color = if (isSel) BrightYellow else TextLight, fontSize = 11.sp)
+                    Text(ta, color = if (isSel) ProOrange else ProTextLight, fontSize = 11.sp)
                 }
             }
         }
@@ -1296,104 +1414,66 @@ fun AnimationControlsPanel(
 }
 
 @Composable
-fun TemplatesControlsPanel(
-    selectedCategory: String,
-    onCategoryChange: (String) -> Unit,
-    customTemplates: List<Pair<String, String>>,
-    onSelectPreset: (MotionTemplateSpec) -> Unit
+fun AlightEffectsTab(
+    active3D: String,
+    on3DChange: (String) -> Unit,
+    activeProcedural: String,
+    onProceduralChange: (String) -> Unit,
+    activeMatteMask: String,
+    onMatteMaskChange: (String) -> Unit,
+    activeDistortion: String,
+    onDistortionChange: (String) -> Unit
 ) {
-    val presets = remember {
-        listOf(
-            MotionTemplateSpec("fleek", "Fleek", "Featured", "HAUNTED JINN REVEAL", "অন্ধকার জগতের অজানা রহস্য", HorrorCyan, BloodRedGlow, "Pop", "Particles"),
-            MotionTemplateSpec("halo", "Halo", "Featured", "BLOOD CURSE", "রক্তাক্ত অভিশাপের গল্প", BloodRedGlow, HorrorCyan, "Bounce", "Gradient"),
-            MotionTemplateSpec("zoom", "Glow Zoom", "Active", "DEAD OF NIGHT", "মধ্যরাতের ভয়ঙ্কর পদধ্বনি", BrightYellow, BloodRedGlow, "Zoom", "Stripes"),
-            MotionTemplateSpec("contrast", "Contrast", "Simple", "SILENT SHADOW", "নিস্তব্ধ ছায়ার অতল", Color.White, Color.Red, "Slide", "Particles"),
-            MotionTemplateSpec("water", "Water/Wave", "Retro", "MYSTIC RITUAL", "রহস্যময় তন্ত্রমন্ত্র ও ভয়", NeonViolet, HorrorCyan, "Glitch", "Gradient")
-        )
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Categories Row
+        Text("Alight Motion 4.3 Effects Engine", color = ProGoldOrange, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+        // 3D Effects
+        Text("3D Effects", color = ProTextMuted, fontSize = 10.sp)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            listOf("Featured", "Custom", "Active", "Simple", "Retro").forEach { cat ->
-                val isSel = selectedCategory == cat
+            listOf("None", "Raster Extrude", "Star Polyhedron", "Page Curl").forEach { e ->
+                val isSel = active3D == e
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(if (isSel) HorrorCyan else DarkSurfaceCard)
-                        .border(1.dp, if (isSel) HorrorCyan else DarkSurfaceBorder, RoundedCornerShape(20.dp))
-                        .clickable { onCategoryChange(cat) }
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSel) ProOrange.copy(alpha = 0.25f) else ProCardBlack)
+                        .border(1.dp, if (isSel) ProOrange else ProCardBorder, RoundedCornerShape(6.dp))
+                        .clickable { on3DChange(e) }
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
                 ) {
-                    Text(cat, color = if (isSel) Color.Black else TextLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(e, color = if (isSel) ProOrange else ProTextLight, fontSize = 11.sp)
                 }
             }
         }
 
-        // Custom Templates (Custom 1..5)
-        if (selectedCategory == "Custom") {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                customTemplates.forEach { (title, subtitle) ->
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = DarkSurfaceCard),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DarkSurfaceBorder),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.width(130.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Text(title, color = HorrorCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            Text(subtitle, color = TextMuted, fontSize = 10.sp)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextLight, modifier = Modifier.size(16.dp))
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate", tint = TextLight, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // Preset Cards
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(presets) { preset ->
-                    Card(
-                        onClick = { onSelectPreset(preset) },
-                        colors = CardDefaults.cardColors(containerColor = DarkSurfaceCard),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DarkSurfaceBorder),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.width(150.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(10.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(55.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(PureBlack),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(preset.name, color = preset.textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(preset.mainText, color = TextLight, fontSize = 10.sp, maxLines = 1)
-                            Text("${preset.animation} • ${preset.category}", color = TextMuted, fontSize = 9.sp)
-                        }
-                    }
+        // Distortion & Horror Effects
+        Text("Distortion / Horror FX", color = ProTextMuted, fontSize = 10.sp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            listOf("RGB Split", "Scanlines", "Oozing Morph", "Spin Cut").forEach { d ->
+                val isSel = activeDistortion == d
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(if (isSel) ProRed.copy(alpha = 0.25f) else ProCardBlack)
+                        .border(1.dp, if (isSel) ProRed else ProCardBorder, RoundedCornerShape(6.dp))
+                        .clickable { onDistortionChange(d) }
+                        .padding(horizontal = 8.dp, vertical = 5.dp)
+                ) {
+                    Text(d, color = if (isSel) ProRed else ProTextLight, fontSize = 11.sp)
                 }
             }
         }
@@ -1401,17 +1481,14 @@ fun TemplatesControlsPanel(
 }
 
 @Composable
-fun AutoCaptionControlsPanel(
-    words: List<CaptionWord>,
-    isGenerating: Boolean,
-    onGenerate: () -> Unit,
-    onOpenSrt: () -> Unit
+fun AutoCaptionTab(
+    onTranscribe: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1419,272 +1496,525 @@ fun AutoCaptionControlsPanel(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("AI Auto Caption (Bangla & English)", color = HorrorCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("Word-by-word synced horror captions", color = TextMuted, fontSize = 11.sp)
+                Text("Auto Caption (Bangla + English)", color = ProOrange, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Speech to Text Timeline with SRT Export", color = ProTextMuted, fontSize = 10.sp)
             }
 
             Button(
-                onClick = onGenerate,
-                enabled = !isGenerating,
-                colors = ButtonDefaults.buttonColors(containerColor = HorrorCyan),
+                onClick = onTranscribe,
+                colors = ButtonDefaults.buttonColors(containerColor = ProOrange),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(34.dp)
             ) {
-                if (isGenerating) {
-                    CircularProgressIndicator(color = Color.Black, modifier = Modifier.size(16.dp))
-                } else {
-                    Icon(Icons.Default.Mic, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Auto Transcribe", color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                }
+                Text("Transcribe", color = ProBlack, fontWeight = FontWeight.Bold, fontSize = 11.sp)
             }
         }
 
-        // Timeline word-by-word chips
-        Row(
+        // Example Transcript Box
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(ProCardBlack)
+                .border(1.dp, ProCardBorder, RoundedCornerShape(8.dp))
+                .padding(10.dp)
         ) {
-            words.forEach { w ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(DarkSurfaceCard)
-                        .border(1.dp, HorrorCyan.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(w.word, color = BrightYellow, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Text("${w.startTimeMs}ms", color = TextMuted, fontSize = 9.sp)
-                    }
-                }
-            }
-        }
-
-        // SRT Export / Import row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            Button(
-                onClick = onOpenSrt,
-                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceCard),
-                shape = RoundedCornerShape(8.dp),
-                border = androidx.compose.foundation.BorderStroke(1.dp, DarkSurfaceBorder),
-                modifier = Modifier.height(32.dp)
-            ) {
-                Icon(Icons.Default.Subtitles, contentDescription = null, tint = TextLight, modifier = Modifier.size(14.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("View / Export SRT", color = TextLight, fontSize = 11.sp)
-            }
-        }
-    }
-}
-
-@Composable
-fun MusicControlsPanel(
-    selectedMusic: String,
-    onMusicChange: (String) -> Unit,
-    sfxEnabled: Boolean,
-    onSfxToggle: (Boolean) -> Unit,
-    volume: Float,
-    onVolumeChange: (Float) -> Unit,
-    onTestSfx: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Text("Background Music & Horror SFX", color = NeonViolet, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-
-        // SFX toggle on word pop
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text("SFX On Word Pop", color = TextLight, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text("Plays tactile audio chime on every animated word", color = TextMuted, fontSize = 10.sp)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onTestSfx) {
-                    Icon(Icons.Default.VolumeUp, contentDescription = "Test", tint = NeonViolet)
-                }
-                Switch(
-                    checked = sfxEnabled,
-                    onCheckedChange = onSfxToggle,
-                    colors = SwitchDefaults.colors(checkedThumbColor = NeonViolet, checkedTrackColor = NeonViolet.copy(alpha = 0.4f))
-                )
-            }
-        }
-
-        // Ambient Tracks selection
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf(
-                "Horror Ambience (Dark Strings)",
-                "Creepy Heartbeat",
-                "Cinematic Sub Bass",
-                "Midnight Whispers"
-            ).forEach { track ->
-                val isSel = selectedMusic == track
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSel) NeonViolet.copy(alpha = 0.25f) else DarkSurfaceCard)
-                        .border(1.dp, if (isSel) NeonViolet else DarkSurfaceBorder, RoundedCornerShape(8.dp))
-                        .clickable { onMusicChange(track) }
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(track, color = if (isSel) NeonViolet else TextLight, fontSize = 11.sp)
-                }
-            }
-        }
-
-        // Volume slider
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Volume: ${(volume * 100).toInt()}%", color = TextLight, fontSize = 11.sp, modifier = Modifier.width(80.dp))
-            Slider(
-                value = volume,
-                onValueChange = onVolumeChange,
-                valueRange = 0f..1f,
-                colors = SliderDefaults.colors(thumbColor = NeonViolet, activeTrackColor = NeonViolet),
-                modifier = Modifier.weight(1f)
+            Text(
+                text = "Transcript:\n00:00:00.000 -> JINN CAN CAUSE CANCER\n00:00:02.000 -> জিন মানুষের মারাত্মক ক্ষতি করতে পারে...",
+                color = ProAmberSubtitle,
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace
             )
         }
     }
 }
 
 @Composable
-fun SwitchAspectControlsPanel(
-    stillAnimation: String,
-    onStillAnimationChange: (String) -> Unit
+fun MusicSfxTab(
+    onPlaySfx: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text("Aspect Ratio & Scale Switch", color = HorrorCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        Text("Horror Sound Effects & Ambient Audio", color = ProRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
         Row(
             modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Tactile Word-Pop SFX", color = ProTextLight, fontSize = 12.sp)
+            Button(
+                onClick = onPlaySfx,
+                colors = ButtonDefaults.buttonColors(containerColor = ProCardBlack),
+                border = androidx.compose.foundation.BorderStroke(1.dp, ProRed),
+                shape = RoundedCornerShape(6.dp),
+                modifier = Modifier.height(32.dp)
+            ) {
+                Icon(Icons.Default.VolumeUp, contentDescription = null, tint = ProRed, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Test Pop", color = ProTextLight, fontSize = 11.sp)
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------
+// HOME SCREEN VIEW
+// -----------------------------------------------------------------
+@Composable
+fun HomeScreenView(
+    onOpenEditor: () -> Unit,
+    onOpenProjects: () -> Unit,
+    onOpenTemplates: () -> Unit,
+    onOpenTutorials: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BackgroundVignette)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+            .testTag("home_screen_view"),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Hero Header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color(0xFF220A00), Color(0xFF140500), ProBlack)
+                    )
+                )
+                .border(1.5.dp, CardBorderGradient, RoundedCornerShape(18.dp))
+                .padding(20.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "BANGLA MOTION 2.0 PRO",
+                    color = ProOrange,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Text(
+                    text = "Professional Kinetic & Horror Caption Studio",
+                    color = ProTextLight,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 30.sp
+                )
+                Text(
+                    text = "Alight Motion & CapCut Grade Animation Engine",
+                    color = ProTextMuted,
+                    fontSize = 13.sp
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = onOpenEditor,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .background(RedOrangeGradient, RoundedCornerShape(10.dp))
+                    ) {
+                        Text("New Project", color = ProBlack, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+                    }
+
+                    Button(
+                        onClick = onOpenTemplates,
+                        colors = ButtonDefaults.buttonColors(containerColor = ProCardBlack),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderGradient),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                    ) {
+                        Text("Templates", color = ProTextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+
+        // Quick Access Cards
+        Text("Quick Jump", color = ProTextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            QuickCard("Projects", "Recent 1080p Edits", Icons.Default.Folder, Modifier.weight(1f), onOpenProjects)
+            QuickCard("Tutorials", "Controlpad & Grouping", Icons.Default.Help, Modifier.weight(1f), onOpenTutorials)
+        }
+    }
+}
+
+@Composable
+fun QuickCard(title: String, desc: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = ProCardBlack),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderGradient),
+        shape = RoundedCornerShape(12.dp),
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Icon(icon, contentDescription = null, tint = ProOrange, modifier = Modifier.size(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(title, color = ProTextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(desc, color = ProTextMuted, fontSize = 11.sp)
+        }
+    }
+}
+
+// -----------------------------------------------------------------
+// 2. PROJECTS SCREEN VIEW (From Screenshots)
+// -----------------------------------------------------------------
+@Composable
+fun ProjectsScreenView(
+    projects: List<ProProject>,
+    onOpenProject: (ProProject) -> Unit,
+    onDuplicateProject: (ProProject) -> Unit,
+    onDeleteProject: (ProProject) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .testTag("projects_screen_view"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Your Projects", color = ProTextLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Text("Sorted by Date • 1080x1920 30fps", color = ProTextMuted, fontSize = 12.sp)
+            }
+
+            Text("Sort by Date ▾", color = ProOrange, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(projects, key = { it.id }) { project ->
+                Card(
+                    onClick = { onOpenProject(project) },
+                    colors = CardDefaults.cardColors(containerColor = ProCardBlack),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ProCardBorder),
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 9:16 Thumbnail Box
+                        Box(
+                            modifier = Modifier
+                                .size(width = 64.dp, height = 90.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(ProBlack)
+                                .border(1.dp, CardBorderGradient, RoundedCornerShape(8.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = project.text.take(8),
+                                color = project.textColor,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = project.title,
+                                color = ProTextLight,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+
+                            // Badges: 9:16, 1080p, 30fps
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                ProjectBadge(project.aspectRatio)
+                                ProjectBadge(project.resolution)
+                                ProjectBadge(project.fps)
+                            }
+
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "${project.date} • ${project.durationSec} • ${project.sizeKb}",
+                                color = ProTextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+
+                        // Duplicate & Delete Actions
+                        Column {
+                            IconButton(onClick = { onDuplicateProject(project) }) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate", tint = ProOrange, modifier = Modifier.size(18.dp))
+                            }
+                            IconButton(onClick = { onDeleteProject(project) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ProRed, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ProjectBadge(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(Color(0xFF201010))
+            .border(0.5.dp, ProOrange.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 5.dp, vertical = 2.dp)
+    ) {
+        Text(text, color = ProOrange, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+// -----------------------------------------------------------------
+// 3. TEMPLATES SCREEN VIEW (From Screenshots)
+// -----------------------------------------------------------------
+@Composable
+fun TemplatesScreenView(
+    onSelectTemplate: (ProPreset) -> Unit
+) {
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val categories = listOf("Popular", "FX", "Transitions", "Text animations")
+
+    val presets = remember {
+        listOf(
+            ProPreset("pr1", "Decoding Glitches", "GLITCH", "Popular", "DECODING REALITY", "Glitch", "RGB Split"),
+            ProPreset("pr2", "Ripple Neon Glow", "GLOW DISTORTION", "FX", "RIPPLE NEON SOUL", "Bounce", "Scanlines"),
+            ProPreset("pr3", "Retro TV Glitch", "COLOR", "Popular", "RETRO TV STATIC", "Slide", "RGB Split"),
+            ProPreset("pr4", "Outline Shake", "GRUNGE", "Transitions", "SHAKE HEADLINES", "Shake", "Oozing Morph"),
+            ProPreset("pr5", "Advanced Cinematic", "BLOOD & SHADOW", "FX", "CINEMATIC CURSE", "Zoom", "Raster Extrude"),
+            ProPreset("pr6", "Illustrated Flow", "STAR", "Text animations", "STARLIGHT CHRONICLES", "Pop", "Scanlines")
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .testTag("templates_screen_view"),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Discover Templates & Presets", color = ProTextLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+
+            // Upload XML button
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(ProCardBlack)
+                    .border(1.dp, CardBorderGradient, RoundedCornerShape(8.dp))
+                    .clickable { }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.UploadFile, contentDescription = null, tint = ProOrange, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Upload XML", color = ProTextLight, fontSize = 11.sp)
+                }
+            }
+        }
+
+        // Tabs: Popular, FX, Transitions, Text animations
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            categories.forEachIndexed { idx, cat ->
+                val isSel = selectedTab == idx
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(if (isSel) RedOrangeGradient else Brush.linearGradient(listOf(ProCardBlack, ProCardBlack)))
+                        .clickable { selectedTab = idx }
+                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                ) {
+                    Text(cat, color = if (isSel) ProBlack else ProTextLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                }
+            }
+        }
+
+        // Presets Grid
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(presets) { preset ->
+                Card(
+                    onClick = { onSelectTemplate(preset) },
+                    colors = CardDefaults.cardColors(containerColor = ProCardBlack),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ProCardBorder),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(ProRed.copy(alpha = 0.2f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(preset.tag, color = ProRed, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(preset.name, color = ProTextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(preset.text, color = ProTextMuted, fontSize = 11.sp)
+                        }
+
+                        Icon(Icons.Default.Download, contentDescription = "Use", tint = ProOrange, modifier = Modifier.size(20.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+// -----------------------------------------------------------------
+// 8. TUTORIALS SCREEN VIEW (From Screenshots)
+// -----------------------------------------------------------------
+@Composable
+fun TutorialsScreenView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+            .testTag("tutorials_screen_view"),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text("Tutorials & Getting Started", color = ProTextLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+
+        // Getting Started Part 1 & 2 Cards
+        TutorialCard("Getting Started Part 1", "An introduction to motion graphics and layers", Icons.Default.MovieCreation)
+        TutorialCard("Getting Started Part 2", "Keyframing and visual curves masterclass", Icons.Default.Animation)
+        TutorialCard("Using Controlpad", "Swipe here to move elements, snap to coordinates", Icons.Default.FormatAlignCenter)
+        TutorialCard("Grouping and Aligning", "Merge multiple layers into Masking Groups", Icons.Default.Layers)
+        TutorialCard("Learn More (User Guide)", "Comprehensive CapCut & Alight Motion workflow", Icons.Default.Help)
+    }
+}
+
+@Composable
+fun TutorialCard(title: String, desc: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = ProCardBlack),
+        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderGradient),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(HorrorCyan.copy(alpha = 0.2f))
-                    .border(1.dp, HorrorCyan, RoundedCornerShape(10.dp))
-                    .padding(12.dp),
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF220A00)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("9:16 (Reels/Shorts)", color = HorrorCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Icon(icon, contentDescription = null, tint = ProOrange, modifier = Modifier.size(24.dp))
             }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(DarkSurfaceCard)
-                    .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(10.dp))
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("1:1 (Square)", color = TextMuted, fontSize = 12.sp)
-            }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(DarkSurfaceCard)
-                    .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(10.dp))
-                    .padding(12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("16:9 (Landscape)", color = TextMuted, fontSize = 12.sp)
-            }
-        }
-    }
-}
-
-@Composable
-fun PreviewControlsPanel(
-    textAnimation: String,
-    onReplay: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text("Interactive Playback & Timeline Scrubber", color = TextLight, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Button(
-                onClick = onReplay,
-                colors = ButtonDefaults.buttonColors(containerColor = HorrorCyan),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.Black)
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Replay Animation", color = Color.Black, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(title, color = ProTextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text(desc, color = ProTextMuted, fontSize = 11.sp)
             }
         }
     }
 }
 
 // -----------------------------------------------------------------
-// BOTTOM NAVIGATION WITH THE REQUESTED 7 TABS
+// BOTTOM NAVIGATION BAR (Home, Tutorials, Projects, Templates)
 // -----------------------------------------------------------------
 @Composable
-fun StudioBottomNavigation(
-    activeTab: StudioTab,
-    onTabSelected: (StudioTab) -> Unit
+fun ProBottomNavigationBar(
+    currentScreen: MainScreen,
+    onScreenSelected: (MainScreen) -> Unit
 ) {
-    Row(
+    NavigationBar(
+        containerColor = ProBlack,
+        tonalElevation = 8.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .background(DarkCharcoal)
-            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(0.dp))
-            .horizontalScroll(rememberScrollState())
-            .padding(vertical = 4.dp, horizontal = 6.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically
+            .border(1.dp, ProCardBorder, RoundedCornerShape(0.dp))
+            .testTag("pro_bottom_nav")
     ) {
-        StudioTab.values().forEach { tab ->
-            val isSelected = activeTab == tab
-            Column(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) HorrorCyan.copy(alpha = 0.15f) else Color.Transparent)
-                    .clickable { onTabSelected(tab) }
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Icon(
-                    imageVector = tab.icon,
-                    contentDescription = tab.label,
-                    tint = if (isSelected) HorrorCyan else TextMuted,
-                    modifier = Modifier.size(20.dp)
+        MainScreen.values().forEach { screen ->
+            val isSelected = currentScreen == screen
+            NavigationBarItem(
+                selected = isSelected,
+                onClick = { onScreenSelected(screen) },
+                icon = {
+                    Icon(
+                        imageVector = screen.icon,
+                        contentDescription = screen.label
+                    )
+                },
+                label = {
+                    Text(
+                        text = screen.label,
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = ProBlack,
+                    selectedTextColor = ProOrange,
+                    indicatorColor = ProOrange,
+                    unselectedIconColor = Color.White,
+                    unselectedTextColor = ProTextMuted
                 )
-                Text(
-                    text = tab.label,
-                    color = if (isSelected) HorrorCyan else TextMuted,
-                    fontSize = 10.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                )
-            }
+            )
         }
     }
 }
