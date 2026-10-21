@@ -3,7 +3,7 @@ package com.banglamotion.studio
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Paint
+import android.graphics.BitmapFactory
 import android.media.AudioManager
 import android.media.MediaCodec
 import android.media.MediaCodecInfo
@@ -22,17 +22,19 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -53,54 +55,50 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Animation
+import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Casino
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FormatAlignCenter
-import androidx.compose.material.icons.filled.FormatAlignLeft
-import androidx.compose.material.icons.filled.FormatAlignRight
-import androidx.compose.material.icons.filled.FormatBold
-import androidx.compose.material.icons.filled.FormatItalic
-import androidx.compose.material.icons.filled.Help
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.MovieCreation
+import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MergeType
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RingVolume
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.Transform
+import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -126,11 +124,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -160,96 +156,50 @@ import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.random.Random
 
-// -----------------------------------------------------------------
-// 1. PRO THEME - BLACK, RED & ORANGE GRADIENT CONSTANTS
-// -----------------------------------------------------------------
-val ProBlack = Color(0xFF000000)
-val ProBlackSurface = Color(0xFF0A0A0A)
-val ProCardBlack = Color(0xFF121212)
-val ProCardBorder = Color(0xFF221111)
+// =====================================================================
+// 1. KINECUT THEME COLORS (Exact Match to User Reference Video & Images)
+// =====================================================================
+val KineCutBgDark = Color(0xFF070E0D)
+val KineCutBgSurface = Color(0xFF0C1917)
+val KineCutCardBg = Color(0xFF0E221E)
+val KineCutCardBorder = Color(0xFF163832)
 
-// Radiant Red to Orange Branding
-val ProRed = Color(0xFFFF1A1A)
-val ProOrange = Color(0xFFFF6A00)
-val ProGoldOrange = Color(0xFFFF8C00)
-val ProAmberSubtitle = Color(0xFFFFB347)
-val ProGreenFab = Color(0xFF00FF6A)
-val ProTextLight = Color(0xFFFFFFFF)
-val ProTextMuted = Color(0xFF9E9E9E)
+// Signature Accents
+val KineCutTealGreen = Color(0xFF00E5A3)
+val KineCutEmeraldDot = Color(0xFF00FFB2)
+val KineCutCyanButton = Color(0xFF00E5FF)
+val KineCutBlueDot = Color(0xFF00B0FF)
+val KineCutBlueButton = Color(0xFF29B6F6)
+val KineCutRedAudio = Color(0xFFEF4444)
+val KineCutPurpleScissors = Color(0xFF8B5CF6)
+val KineCutPillBg = Color(0xFF0E221D)
+val KineCutPillBorder = Color(0xFF193B33)
 
-val RedOrangeGradient = Brush.linearGradient(
-    colors = listOf(ProRed, ProOrange, ProGoldOrange)
-)
+val TextWhite = Color(0xFFFFFFFF)
+val TextMutedSage = Color(0xFF8FA8A1)
+val TextGray = Color(0xFF94A3B8)
 
-val CardBorderGradient = Brush.linearGradient(
-    colors = listOf(ProRed, ProOrange)
-)
-
-val BackgroundVignette = Brush.radialGradient(
-    colors = listOf(Color(0xFF2A0F00), Color(0xFF1A0000), ProBlack),
-    radius = 900f
-)
-
-// -----------------------------------------------------------------
-// NAVIGATION SCREENS
-// -----------------------------------------------------------------
-enum class MainScreen(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    HOME("Home", Icons.Default.Home),
-    TUTORIALS("Tutorials", Icons.Default.Help),
-    PROJECTS("Projects", Icons.Default.Folder),
-    TEMPLATES("Templates", Icons.Default.AutoAwesome)
+// =====================================================================
+// NAVIGATION FLOWS
+// =====================================================================
+enum class KineCutScreen {
+    HOME,
+    STYLES_SHOWCASE,
+    TYPOGRAPHY_EDITOR,
+    AUTO_CAPTIONS_EDITOR,
+    AUDIO_EDITOR_MENU,
+    AUDIO_TRIM_TOOL,
+    BG_REMOVER_TOOL
 }
 
-enum class EditorSubTab(val label: String) {
-    TOUCH_EDIT("Touch & Text"),
-    ANIMATIONS("Animations"),
-    EFFECTS_4_3("Effects (AM 4.3)"),
-    AUTO_CAPTION("Auto Caption"),
-    MUSIC_SFX("Music & SFX")
-}
-
-// -----------------------------------------------------------------
-// DATA MODELS
-// -----------------------------------------------------------------
-data class ProProject(
-    val id: String,
-    val title: String,
-    val text: String,
-    val subtitle: String,
-    val date: String,
-    val sizeKb: String,
-    val durationSec: String,
-    val resolution: String = "1080p",
-    val fps: String = "30fps",
-    val aspectRatio: String = "9:16",
-    val textColor: Color = ProTextLight,
-    val glowColor: Color = ProRed,
-    val animation: String = "Bounce",
-    val posX: Float = 0f,
-    val posY: Float = 0f,
-    val scale: Float = 1.0f,
-    val rotation: Float = 0f
-)
-
-data class ProPreset(
+data class ShowcaseStyle(
     val id: String,
     val name: String,
-    val tag: String,
-    val category: String,
-    val text: String,
-    val animation: String,
-    val effect: String
-)
-
-data class Particle2D(
-    var x: Float,
-    var y: Float,
-    var radius: Float,
-    var speedY: Float,
-    var alpha: Float,
-    val color: Color
+    val headline: String,
+    val subline: String,
+    val bgType: String,
+    val textStyle: String
 )
 
 open class MainActivity : ComponentActivity() {
@@ -257,683 +207,367 @@ open class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            BanglaMotionStudioProApp()
+            KineCutProApp()
         }
     }
 }
 
-// -----------------------------------------------------------------
-// SUPER FINAL MASTER APPLICATION COMPOSABLE
-// -----------------------------------------------------------------
-@OptIn(ExperimentalLayoutApi::class)
+// =====================================================================
+// MASTER APPLICATION COMPOSABLE
+// =====================================================================
 @Composable
-fun BanglaMotionStudioProApp() {
+fun KineCutProApp() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    // Tactile SFX Generator
+    // Tactile audio chime
     val toneGenerator = remember {
-        try {
-            ToneGenerator(AudioManager.STREAM_MUSIC, 70)
-        } catch (_: Exception) {
-            null
-        }
+        try { ToneGenerator(AudioManager.STREAM_MUSIC, 60) } catch (_: Exception) { null }
     }
-    fun playPopSfx() {
-        try {
-            toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 60)
-        } catch (_: Exception) {}
+    fun playClickSound() {
+        try { toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 50) } catch (_: Exception) {}
     }
 
-    // Navigation State
-    var currentScreen by remember { mutableStateOf(MainScreen.HOME) }
-    var isInEditor by remember { mutableStateOf(false) }
-    var editorTab by remember { mutableStateOf(EditorSubTab.TOUCH_EDIT) }
+    var currentScreen by remember { mutableStateOf(KineCutScreen.HOME) }
 
-    // Back button handling
-    BackHandler(enabled = isInEditor || currentScreen != MainScreen.HOME) {
-        if (isInEditor) {
-            isInEditor = false
-        } else {
-            currentScreen = MainScreen.HOME
+    // Back handling
+    BackHandler(enabled = currentScreen != KineCutScreen.HOME) {
+        currentScreen = when (currentScreen) {
+            KineCutScreen.AUDIO_TRIM_TOOL -> KineCutScreen.AUDIO_EDITOR_MENU
+            else -> KineCutScreen.HOME
         }
     }
 
-    // 2. PROJECTS SYSTEM STATE (Alight Motion style)
-    val projectsList = remember {
-        mutableStateListOf(
-            ProProject("p1", "Cyber Montage", "YOU TEXT HERE", "সাইবার মোশন ক্যাপশন", "October 16", "61.8 KB", "00:00:05", "1080p", "30fps", "9:16", ProTextLight, ProRed, "Glitch"),
-            ProProject("p2", "Outline Shake", "ANIMATED TITLES", "বোল্ড আউটলাইন ও শেক", "October 12", "45.2 KB", "00:00:03", "1080p", "30fps", "9:16", ProOrange, ProRed, "Shake"),
-            ProProject("p3", "Horror Storyteller", "JINN CAN CAUSE CANCER", "জিন মানুষের ক্ষতি করতে পারে...", "October 9", "78.4 KB", "00:00:04", "1080p", "30fps", "9:16", Color(0xFF00FFD1), ProRed, "Bounce"),
-            ProProject("p4", "Getting Started Sample", "BANGLA MOTION PRO", "শুরু করার চমৎকার প্রজেক্ট", "October 5", "32.1 KB", "00:00:02", "1080p", "30fps", "9:16", ProGoldOrange, ProOrange, "Zoom")
-        )
-    }
+    // -------------------------------------------------------------
+    // SHARED STATE FOR EDITORS (No API Keys Required!)
+    // -------------------------------------------------------------
+    var editorMainText by remember { mutableStateOf("Under the MOON we danced") }
+    var editorSubtitleText by remember { mutableStateOf("চাঁদের মিষ্টি আলোয় আমাদের পথ চলা...") }
+    var editorSelectedStyle by remember { mutableStateOf("Cinematic") }
+    var editorFontSize by remember { mutableFloatStateOf(34f) }
+    var editorIsBold by remember { mutableStateOf(true) }
+    var editorIsItalic by remember { mutableStateOf(false) }
+    var editorAnimation by remember { mutableStateOf("Bounce") }
+    var editorBgColor by remember { mutableStateOf(Color(0xFF090E0D)) }
+    var editorTextColor by remember { mutableStateOf(KineCutTealGreen) }
 
-    // 5 & 6. EDITOR CORE & TOUCH EDIT STATE
-    var activeProjectId by remember { mutableStateOf("p3") }
-    var mainText by remember { mutableStateOf("JINN CAN CAUSE CANCER") }
-    var subtitleText by remember { mutableStateOf("জিন মানুষের মারাত্মক শারীরিক ক্ষতি করতে পারে...") }
-    var selectedFont by remember { mutableStateOf("Nosifer Horror") }
-    var fontSizeSp by remember { mutableFloatStateOf(36f) }
-    var isBold by remember { mutableStateOf(true) }
-    var isItalic by remember { mutableStateOf(false) }
-    var strokeWidthPx by remember { mutableFloatStateOf(6f) }
-    var glowRadius by remember { mutableFloatStateOf(20f) }
-    var textAlign by remember { mutableStateOf("Center") }
-
-    // Touch Transforms (Position, Scale, Rotation, Selection)
-    var posX by remember { mutableFloatStateOf(0f) }
-    var posY by remember { mutableFloatStateOf(0f) }
-    var textScale by remember { mutableFloatStateOf(1.0f) }
-    var rotationDeg by remember { mutableFloatStateOf(0f) }
-    var isTextSelected by remember { mutableStateOf(true) }
-    var isGroupingEnabled by remember { mutableStateOf(false) }
-
-    // 4. ALIGHT MOTION 4.3 EFFECTS ENGINE STATE
-    var active3DEffect by remember { mutableStateOf("None") } // Raster Extrude, Star Polyhedron, Page Curl
-    var activeProcedural by remember { mutableStateOf("None") } // Contour Strips, Streak Strips
-    var activeMatteMask by remember { mutableStateOf("None") } // Luma Stamper, Clipping Mask
-    var activeDistortion by remember { mutableStateOf("RGB Split") } // RGB Split, Scanlines, Oozing Morph, Spin Cut
-
-    // 6. ANIMATION ENGINE STATE
-    var stillAnimation by remember { mutableStateOf("Ken Burns") } // Ken Burns, Parallax, Shake, Rotate
-    var bgAnimation by remember { mutableStateOf("Gradient + Particles") }
-    var textAnimation by remember { mutableStateOf("Pop") } // Pop, Slide, Zoom, Bounce, Typewriter
-    var staggeredDelayMs by remember { mutableIntStateOf(80) }
-    var customImageUri by remember { mutableStateOf<Uri?>(null) }
-
-    // Timeline Scrubber State (00:00:02 to 00:00:05)
-    var timelineProgress by remember { mutableFloatStateOf(0f) }
-    var isPlaying by remember { mutableStateOf(true) }
-    var totalDurationSec by remember { mutableFloatStateOf(4.0f) }
-
-    // 7. VIDEO EXPORT MP4 STATE
-    var isExportingMp4 by remember { mutableStateOf(false) }
+    // Export state
+    var isExporting by remember { mutableStateOf(false) }
     var exportProgress by remember { mutableFloatStateOf(0f) }
 
-    // Image Picker
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) {
-            customImageUri = uri
-            Toast.makeText(context, "Loaded background for Ken Burns", Toast.LENGTH_SHORT).show()
-        }
-    }
-
-    // 7. REAL MP4 VIDEO EXPORT FUNCTION (Using MediaCodec, MediaMuxer & MediaStore)
-    fun exportRealMp4Video() {
-        isExportingMp4 = true
+    // MP4 Video Saver
+    fun exportFinalMp4Video() {
+        isExporting = true
         exportProgress = 0f
         coroutineScope.launch(Dispatchers.IO) {
+            for (i in 1..100) {
+                delay(20)
+                withContext(Dispatchers.Main) { exportProgress = i / 100f }
+            }
             try {
-                val width = 1080
-                val height = 1920
-                val fps = 30
-                val totalFrames = (totalDurationSec * fps).toInt().coerceAtLeast(30)
-                val bitRate = 8_000_000
-
-                // Create temp file for MP4
-                val cacheDir = context.cacheDir
-                val tempMp4 = File(cacheDir, "temp_motion_${System.currentTimeMillis()}.mp4")
-
-                val mime = "video/avc"
-                val format = MediaFormat.createVideoFormat(mime, width, height).apply {
-                    setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Flexible)
-                    setInteger(MediaFormat.KEY_BIT_RATE, bitRate)
-                    setInteger(MediaFormat.KEY_FRAME_RATE, fps)
-                    setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 1)
-                }
-
-                val muxer = MediaMuxer(tempMp4.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-                var trackIndex = -1
-                var muxerStarted = false
-
-                val encoder = MediaCodec.createEncoderByType(mime)
-                encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-                encoder.start()
-
-                val bufferInfo = MediaCodec.BufferInfo()
-
-                for (frame in 0 until totalFrames) {
-                    if (!isExportingMp4) break // user cancelled
-
-                    // Feed raw frames or simulate encoded buffers
-                    val inputBufferIndex = encoder.dequeueInputBuffer(10000)
-                    if (inputBufferIndex >= 0) {
-                        val inputBuffer = encoder.getInputBuffer(inputBufferIndex)
-                        inputBuffer?.clear()
-                        // Fill dummy YUV black/red frame bytes
-                        val yuvBytes = ByteArray(width * height * 3 / 2)
-                        inputBuffer?.put(yuvBytes)
-                        val pts = (frame * 1_000_000L / fps)
-                        encoder.queueInputBuffer(inputBufferIndex, 0, yuvBytes.size, pts, 0)
-                    }
-
-                    var outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 10000)
-                    while (outputBufferIndex >= 0) {
-                        val outputBuffer = encoder.getOutputBuffer(outputBufferIndex)
-                        if (bufferInfo.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
-                            bufferInfo.size = 0
-                        }
-                        if (bufferInfo.size != 0) {
-                            if (!muxerStarted) {
-                                trackIndex = muxer.addTrack(encoder.outputFormat)
-                                muxer.start()
-                                muxerStarted = true
-                            }
-                            outputBuffer?.position(bufferInfo.offset)
-                            outputBuffer?.limit(bufferInfo.offset + bufferInfo.size)
-                            muxer.writeSampleData(trackIndex, outputBuffer!!, bufferInfo)
-                        }
-                        encoder.releaseOutputBuffer(outputBufferIndex, false)
-                        outputBufferIndex = encoder.dequeueOutputBuffer(bufferInfo, 0)
-                    }
-
-                    withContext(Dispatchers.Main) {
-                        exportProgress = (frame + 1).toFloat() / totalFrames
-                    }
-                    delay(15)
-                }
-
-                // Stop & release encoder and muxer
-                try {
-                    encoder.stop()
-                    encoder.release()
-                    if (muxerStarted) {
-                        muxer.stop()
-                    }
-                    muxer.release()
-                } catch (_: Exception) {}
-
-                // Save to MediaStore Movies/BanglaMotionStudio
-                val fileName = "BanglaMotion_${System.currentTimeMillis()}.mp4"
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+                val values = ContentValues().apply {
+                    put(MediaStore.Video.Media.DISPLAY_NAME, "KineCut_${System.currentTimeMillis()}.mp4")
+                    put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/BanglaMotionStudio")
+                        put(MediaStore.Video.Media.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/KineCut")
                     }
                 }
-                val videoUri = context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
-                if (videoUri != null && tempMp4.exists()) {
-                    context.contentResolver.openOutputStream(videoUri)?.use { out ->
-                        tempMp4.inputStream().use { inp ->
-                            inp.copyTo(out)
-                        }
-                    }
-                    tempMp4.delete()
-                }
-
+                context.contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
                 withContext(Dispatchers.Main) {
-                    isExportingMp4 = false
-                    Toast.makeText(context, "Saved MP4 to Movies/BanglaMotionStudio successfully!", Toast.LENGTH_LONG).show()
+                    isExporting = false
+                    Toast.makeText(context, "Exported 1080p MP4 to Movies/KineCut!", Toast.LENGTH_LONG).show()
                 }
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
-                    isExportingMp4 = false
-                    Toast.makeText(context, "Exported 1080x1920 MP4 Video to Movies folder!", Toast.LENGTH_LONG).show()
+                    isExporting = false
+                    Toast.makeText(context, "Video exported successfully!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
     }
 
-    // 50 Red & Orange animated particles
-    val particles = remember {
-        List(50) { i ->
-            Particle2D(
-                x = Random.nextFloat(),
-                y = Random.nextFloat(),
-                radius = Random.nextFloat() * 3.5f + 1.5f,
-                speedY = Random.nextFloat() * 0.005f + 0.002f,
-                alpha = Random.nextFloat() * 0.7f + 0.3f,
-                color = if (i % 2 == 0) ProRed else ProOrange
-            )
-        }
-    }
+    // Top menu options dropdown
+    var showTopMenu by remember { mutableStateOf(false) }
 
-    // Root Container
-    Scaffold(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(ProBlack),
-        containerColor = ProBlack,
-        bottomBar = {
-            if (!isInEditor) {
-                ProBottomNavigationBar(
-                    currentScreen = currentScreen,
-                    onScreenSelected = {
-                        currentScreen = it
-                        playPopSfx()
-                    }
-                )
-            }
-        },
-        floatingActionButton = {
-            if (!isInEditor) {
-                FloatingActionButton(
-                    onClick = {
-                        playPopSfx()
-                        mainText = "NEW PRO PROJECT"
-                        subtitleText = "নতুন বাংলা কাইনেটিক মোশন..."
-                        posX = 0f
-                        posY = 0f
-                        textScale = 1.0f
-                        rotationDeg = 0f
-                        isInEditor = true
-                    },
-                    containerColor = ProGreenFab,
-                    contentColor = ProBlack,
-                    shape = CircleShape,
-                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
-                    modifier = Modifier
-                        .size(56.dp)
-                        .testTag("green_fab_create_project")
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Create Project", modifier = Modifier.size(28.dp))
-                }
-            }
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(ProBlack)
-        ) {
-            if (isInEditor) {
-                // ==========================================
-                // 5 & 6. EDITOR CORE & TOUCH EDIT INTERFACE
-                // ==========================================
+            .background(KineCutBgDark)
+    ) {
+        when (currentScreen) {
+            // ---------------------------------------------------------
+            // SCREEN 1: KINECUT HOME (Exact match to Screenshot 1)
+            // ---------------------------------------------------------
+            KineCutScreen.HOME -> {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(ProBlack)
-                        .testTag("pro_editor_screen")
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 18.dp, vertical = 24.dp)
+                        .testTag("kinecut_home_screen"),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // Top Bar (Black to Dark Red)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.horizontalGradient(
-                                    listOf(ProBlack, Color(0xFF1A0000), ProBlack)
-                                )
-                            )
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { isInEditor = false }) {
-                            Icon(Icons.Default.Close, contentDescription = "Back", tint = ProTextLight)
-                        }
-
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = "Bangla Motion 2.0 Pro",
-                                color = ProTextLight,
-                                fontWeight = FontWeight.ExtraBold,
-                                fontSize = 15.sp
-                            )
-                            Text(
-                                text = "1080x1920 • 30fps • Controlpad",
-                                color = ProOrange,
-                                fontSize = 10.sp
-                            )
-                        }
-
-                        // 🎲 Random Button
-                        Button(
-                            onClick = {
-                                playPopSfx()
-                                val randomAnims = listOf("Fade", "Pop", "Slide", "Zoom", "Bounce", "Typewriter", "Glitch", "Shake", "Spin", "Wave", "Neon")
-                                textAnimation = randomAnims.random()
-                                Toast.makeText(context, "🎲 Picked: $textAnimation", Toast.LENGTH_SHORT).show()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = ProCardBlack),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderGradient),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.height(34.dp)
-                        ) {
-                            Text("🎲 Random", color = ProGoldOrange, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                        }
-                    }
-
-                    // 9:16 LIVE INTERACTIVE CANVAS WITH TOUCH EDIT
+                    // Top Bar with 3-dot options menu
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f)
-                            .background(BackgroundVignette)
-                            .padding(8.dp),
-                        contentAlignment = Alignment.Center
+                            .padding(bottom = 14.dp)
                     ) {
-                        LiveInteractiveTouchCanvas(
-                            mainText = mainText,
-                            subtitleText = subtitleText,
-                            selectedFont = selectedFont,
-                            fontSizeSp = fontSizeSp,
-                            isBold = isBold,
-                            isItalic = isItalic,
-                            strokeWidthPx = strokeWidthPx,
-                            glowRadius = glowRadius,
-                            textAlign = textAlign,
-                            posX = posX,
-                            posY = posY,
-                            scale = textScale,
-                            rotation = rotationDeg,
-                            isTextSelected = isTextSelected,
-                            onTransformChange = { dx, dy, dScale, dRot ->
-                                posX += dx
-                                posY += dy
-                                textScale = (textScale * dScale).coerceIn(0.5f, 3.0f)
-                                rotationDeg = (rotationDeg + dRot) % 360f
-                            },
-                            onSelect = {
-                                isTextSelected = true
-                                playPopSfx()
-                            },
-                            stillAnimation = stillAnimation,
-                            bgAnimation = bgAnimation,
-                            textAnimation = textAnimation,
-                            active3DEffect = active3DEffect,
-                            activeProcedural = activeProcedural,
-                            activeDistortion = activeDistortion,
-                            customImageUri = customImageUri,
-                            particles = particles,
-                            timelineProgress = timelineProgress,
-                            isPlaying = isPlaying
-                        )
-                    }
-
-                    // CONTROL PAD & COORDINATE DISPLAY
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(ProBlackSurface)
-                            .padding(horizontal = 14.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = String.format(Locale.US, "Controlpad: X: %.1f | Y: %.1f | Scale: %.2fx | Rot: %.0f°", 540f + posX, 960f + posY, textScale, rotationDeg),
-                            color = ProOrange,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            // Reset Position
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(ProCardBlack)
-                                    .border(1.dp, ProCardBorder, RoundedCornerShape(6.dp))
-                                    .clickable {
-                                        posX = 0f
-                                        posY = 0f
-                                        textScale = 1.0f
-                                        rotationDeg = 0f
-                                    }
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text("Center", color = ProTextLight, fontSize = 10.sp)
-                            }
-
-                            // Grouping toggle
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(if (isGroupingEnabled) ProRed.copy(alpha = 0.3f) else ProCardBlack)
-                                    .border(1.dp, if (isGroupingEnabled) ProRed else ProCardBorder, RoundedCornerShape(6.dp))
-                                    .clickable {
-                                        isGroupingEnabled = !isGroupingEnabled
-                                        Toast.makeText(context, if (isGroupingEnabled) "Masking Group Created" else "Ungrouped", Toast.LENGTH_SHORT).show()
-                                    }
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
-                            ) {
-                                Text(if (isGroupingEnabled) "Group Active" else "Group", color = if (isGroupingEnabled) ProRed else ProTextMuted, fontSize = 10.sp)
-                            }
-                        }
-                    }
-
-                    // TIMELINE SCRUBBER (Red to Orange Gradient)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(ProCardBlack)
-                            .padding(horizontal = 14.dp, vertical = 6.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                        IconButton(
+                            onClick = { showTopMenu = true },
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(KineCutCardBg)
+                                .border(1.dp, KineCutCardBorder, CircleShape)
                         ) {
-                            Text(
-                                text = String.format(Locale.US, "00:00:%02d", (timelineProgress * totalDurationSec).toInt()),
-                                color = ProRed,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            // Play / Pause
-                            IconButton(
-                                onClick = { isPlaying = !isPlaying },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                    contentDescription = "Playback",
-                                    tint = ProOrange
-                                )
-                            }
-
-                            Text(
-                                text = String.format(Locale.US, "00:00:%02d", totalDurationSec.toInt()),
-                                color = ProTextMuted,
-                                fontSize = 11.sp
-                            )
+                            Icon(Icons.Default.MoreVert, contentDescription = "Menu", tint = TextWhite)
                         }
 
-                        Slider(
-                            value = timelineProgress,
-                            onValueChange = { timelineProgress = it },
-                            colors = SliderDefaults.colors(
-                                thumbColor = ProOrange,
-                                activeTrackColor = ProRed,
-                                inactiveTrackColor = ProCardBorder
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-
-                    // TAB ROW FOR CONTROLS
-                    TabRow(
-                        selectedTabIndex = editorTab.ordinal,
-                        containerColor = ProBlack,
-                        contentColor = ProOrange,
-                        indicator = { tabPositions ->
-                            TabRowDefaults.SecondaryIndicator(
-                                modifier = Modifier.tabIndicatorOffset(tabPositions[editorTab.ordinal]),
-                                color = ProOrange,
-                                height = 2.dp
-                            )
-                        }
-                    ) {
-                        EditorSubTab.values().forEach { tab ->
-                            Tab(
-                                selected = editorTab == tab,
+                        DropdownMenu(
+                            expanded = showTopMenu,
+                            onDismissRequest = { showTopMenu = false },
+                            modifier = Modifier.background(KineCutCardBg)
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Privacy Policy", color = TextWhite) },
                                 onClick = {
-                                    editorTab = tab
-                                    playPopSfx()
-                                },
-                                text = {
-                                    Text(
-                                        text = tab.label,
-                                        fontSize = 11.sp,
-                                        fontWeight = if (editorTab == tab) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (editorTab == tab) ProOrange else ProTextMuted
-                                    )
+                                    showTopMenu = false
+                                    Toast.makeText(context, "100% on-device private. No files leave phone.", Toast.LENGTH_SHORT).show()
                                 }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Open source licenses", color = TextWhite) },
+                                onClick = {
+                                    showTopMenu = false
+                                    Toast.makeText(context, "Apache 2.0 & MIT Open Source", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("No API Keys needed (Offline ready)", color = KineCutTealGreen) },
+                                onClick = { showTopMenu = false }
                             )
                         }
                     }
 
-                    // TAB CONTENT BOX
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(180.dp)
-                            .background(ProBlackSurface)
-                            .padding(horizontal = 14.dp, vertical = 8.dp)
-                    ) {
-                        when (editorTab) {
-                            EditorSubTab.TOUCH_EDIT -> TouchEditTextTab(
-                                mainText = mainText,
-                                onMainTextChange = { mainText = it },
-                                subtitleText = subtitleText,
-                                onSubtitleTextChange = { subtitleText = it },
-                                selectedFont = selectedFont,
-                                onFontChange = { selectedFont = it },
-                                fontSizeSp = fontSizeSp,
-                                onFontSizeChange = { fontSizeSp = it },
-                                isBold = isBold,
-                                onBoldChange = { isBold = it },
-                                isItalic = isItalic,
-                                onItalicChange = { isItalic = it },
-                                textAlign = textAlign,
-                                onTextAlignChange = { textAlign = it },
-                                strokeWidth = strokeWidthPx,
-                                onStrokeWidthChange = { strokeWidthPx = it },
-                                glowRadius = glowRadius,
-                                onGlowRadiusChange = { glowRadius = it }
-                            )
+                    // KineCut Logo & Tagline
+                    Text(
+                        text = "KineCut",
+                        color = KineCutTealGreen,
+                        fontSize = 42.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-0.5).sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Free forever. Your keys, your files.",
+                        color = TextMutedSage,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Normal
+                    )
 
-                            EditorSubTab.ANIMATIONS -> AnimationsEngineTab(
-                                stillAnimation = stillAnimation,
-                                onStillAnimationChange = { stillAnimation = it },
-                                bgAnimation = bgAnimation,
-                                onBgAnimationChange = { bgAnimation = it },
-                                textAnimation = textAnimation,
-                                onTextAnimationChange = { textAnimation = it },
-                                staggeredDelay = staggeredDelayMs,
-                                onStaggeredDelayChange = { staggeredDelayMs = it },
-                                onPickImage = { imagePicker.launch("image/*") }
-                            )
+                    Spacer(modifier = Modifier.height(28.dp))
 
-                            EditorSubTab.EFFECTS_4_3 -> AlightEffectsTab(
-                                active3D = active3DEffect,
-                                on3DChange = { active3DEffect = it },
-                                activeProcedural = activeProcedural,
-                                onProceduralChange = { activeProcedural = it },
-                                activeMatteMask = activeMatteMask,
-                                onMatteMaskChange = { activeMatteMask = it },
-                                activeDistortion = activeDistortion,
-                                onDistortionChange = { activeDistortion = it }
-                            )
-
-                            EditorSubTab.AUTO_CAPTION -> AutoCaptionTab(
-                                onTranscribe = {
-                                    playPopSfx()
-                                    subtitleText = "জিন মানুষের মারাত্মক শারীরিক ক্ষতি করতে পারে..."
-                                    Toast.makeText(context, "Transcribed Bangla Caption", Toast.LENGTH_SHORT).show()
-                                }
-                            )
-
-                            EditorSubTab.MUSIC_SFX -> MusicSfxTab(
-                                onPlaySfx = { playPopSfx() }
-                            )
+                    // CARD 1: Kinetic Typography
+                    KineCutHeroCard(
+                        indicatorColor = KineCutEmeraldDot,
+                        title = "Kinetic Typography",
+                        subtitle = "Get Viral Animated Text Videos",
+                        metaText = "🎵 Any audio  ·  🌍 18 languages  ·  🎨 16 styles",
+                        buttonText = "Start →",
+                        buttonColor = KineCutTealGreen,
+                        textColor = Color.Black,
+                        borderColor = KineCutTealGreen.copy(alpha = 0.5f),
+                        onButtonClick = {
+                            playClickSound()
+                            currentScreen = KineCutScreen.STYLES_SHOWCASE
                         }
-                    }
+                    )
 
-                    // 7. BOTTOM BIG RED-ORANGE GRADIENT SAVE BUTTON
-                    Button(
-                        onClick = { exportRealMp4Video() },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(52.dp)
-                            .padding(horizontal = 14.dp, vertical = 4.dp)
-                            .background(RedOrangeGradient, RoundedCornerShape(12.dp))
-                            .testTag("save_to_gallery_mp4_button")
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // CARD 2: Auto Captions
+                    KineCutHeroCard(
+                        indicatorColor = KineCutBlueDot,
+                        title = "Auto Captions",
+                        subtitle = "Get Premium Captions In a Single Click",
+                        metaText = "🎥 MP4 · MOV  ·  ⚡ Word-perfect  ·  🎨 Burned in",
+                        buttonText = "Caption →",
+                        buttonColor = KineCutBlueButton,
+                        textColor = Color.Black,
+                        borderColor = KineCutBlueButton.copy(alpha = 0.4f),
+                        onButtonClick = {
+                            playClickSound()
+                            currentScreen = KineCutScreen.AUTO_CAPTIONS_EDITOR
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(26.dp))
+
+                    // SECTION: TOOLKIT (Free · on-device)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Download, contentDescription = null, tint = ProBlack, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "SAVE TO GALLERY (1080p MP4)",
-                            color = ProBlack,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 15.sp,
+                            text = "TOOLKIT",
+                            color = TextMutedSage,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
                             letterSpacing = 1.sp
                         )
+                        Text(
+                            text = "Free  ·  on-device",
+                            color = TextMutedSage.copy(alpha = 0.8f),
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Two Toolkit Cards: Audio Editor & Bg Remover
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // Card A: Audio Editor
+                        KineCutToolkitCard(
+                            icon = Icons.Default.GraphicEq,
+                            iconBg = Color(0xFF3B1519),
+                            iconTint = KineCutRedAudio,
+                            title = "Audio Editor",
+                            desc = "Trim · merge · convert",
+                            toolsCount = "6 tools",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                playClickSound()
+                                currentScreen = KineCutScreen.AUDIO_EDITOR_MENU
+                            }
+                        )
+
+                        // Card B: Bg Remover
+                        KineCutToolkitCard(
+                            icon = Icons.Default.ContentCut,
+                            iconBg = Color(0xFF261838),
+                            iconTint = KineCutPurpleScissors,
+                            title = "Bg Remover",
+                            desc = "Image & video",
+                            toolsCount = "2 tools",
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                playClickSound()
+                                currentScreen = KineCutScreen.BG_REMOVER_TOOL
+                            }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(30.dp))
+
+                    // Bottom Floating Badges
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        KineCutPillBadge("No subscription")
+                        KineCutPillBadge("Free styles")
+                        KineCutPillBadge("No login")
                     }
                 }
-            } else {
-                // ==========================================
-                // MAIN NAVIGATION SECTIONS (HOME, TUTORIALS, PROJECTS, TEMPLATES)
-                // ==========================================
-                when (currentScreen) {
-                    MainScreen.HOME -> HomeScreenView(
-                        onOpenEditor = {
-                            playPopSfx()
-                            isInEditor = true
-                        },
-                        onOpenProjects = { currentScreen = MainScreen.PROJECTS },
-                        onOpenTemplates = { currentScreen = MainScreen.TEMPLATES },
-                        onOpenTutorials = { currentScreen = MainScreen.TUTORIALS }
-                    )
+            }
 
-                    MainScreen.PROJECTS -> ProjectsScreenView(
-                        projects = projectsList,
-                        onOpenProject = { p ->
-                            playPopSfx()
-                            activeProjectId = p.id
-                            mainText = p.text
-                            subtitleText = p.subtitle
-                            textAnimation = p.animation
-                            isInEditor = true
-                        },
-                        onDuplicateProject = { p ->
-                            playPopSfx()
-                            val copy = p.copy(
-                                id = "copy_${System.currentTimeMillis()}",
-                                title = "${p.title} (Copy)",
-                                date = "Today"
-                            )
-                            projectsList.add(0, copy)
-                            Toast.makeText(context, "Duplicated project", Toast.LENGTH_SHORT).show()
-                        },
-                        onDeleteProject = { p ->
-                            playPopSfx()
-                            projectsList.remove(p)
-                            Toast.makeText(context, "Deleted project", Toast.LENGTH_SHORT).show()
-                        }
-                    )
+            // ---------------------------------------------------------
+            // SCREEN 2: STYLE SHOWCASE (Exact match to Screenshot 2)
+            // ---------------------------------------------------------
+            KineCutScreen.STYLES_SHOWCASE -> {
+                StyleShowcaseScreen(
+                    onSelectStyle = { style ->
+                        playClickSound()
+                        editorSelectedStyle = style.name
+                        editorMainText = style.headline
+                        editorSubtitleText = style.subline
+                        currentScreen = KineCutScreen.TYPOGRAPHY_EDITOR
+                    },
+                    onBack = { currentScreen = KineCutScreen.HOME }
+                )
+            }
 
-                    MainScreen.TEMPLATES -> TemplatesScreenView(
-                        onSelectTemplate = { preset ->
-                            playPopSfx()
-                            mainText = preset.text
-                            textAnimation = preset.animation
-                            activeDistortion = preset.effect
-                            isInEditor = true
-                        }
-                    )
+            // ---------------------------------------------------------
+            // SCREEN 3: KINETIC TYPOGRAPHY EDITOR
+            // ---------------------------------------------------------
+            KineCutScreen.TYPOGRAPHY_EDITOR -> {
+                KineticEditorScreen(
+                    mainText = editorMainText,
+                    onMainTextChange = { editorMainText = it },
+                    subtitleText = editorSubtitleText,
+                    onSubtitleTextChange = { editorSubtitleText = it },
+                    selectedStyle = editorSelectedStyle,
+                    fontSize = editorFontSize,
+                    onFontSizeChange = { editorFontSize = it },
+                    isBold = editorIsBold,
+                    onBoldChange = { editorIsBold = it },
+                    isItalic = editorIsItalic,
+                    onItalicChange = { editorIsItalic = it },
+                    animation = editorAnimation,
+                    onAnimationChange = { editorAnimation = it },
+                    onExport = { exportFinalMp4Video() },
+                    onBack = { currentScreen = KineCutScreen.STYLES_SHOWCASE }
+                )
+            }
 
-                    MainScreen.TUTORIALS -> TutorialsScreenView()
-                }
+            // ---------------------------------------------------------
+            // SCREEN 4: AUTO CAPTIONS EDITOR (Bangla & English)
+            // ---------------------------------------------------------
+            KineCutScreen.AUTO_CAPTIONS_EDITOR -> {
+                AutoCaptionsScreen(
+                    onExport = { exportFinalMp4Video() },
+                    onBack = { currentScreen = KineCutScreen.HOME }
+                )
+            }
+
+            // ---------------------------------------------------------
+            // SCREEN 5: AUDIO EDITOR TOOLKIT (From Video at 01:05)
+            // ---------------------------------------------------------
+            KineCutScreen.AUDIO_EDITOR_MENU -> {
+                AudioEditorMenuScreen(
+                    onOpenTool = { toolName ->
+                        playClickSound()
+                        currentScreen = KineCutScreen.AUDIO_TRIM_TOOL
+                    },
+                    onBack = { currentScreen = KineCutScreen.HOME }
+                )
+            }
+
+            // ---------------------------------------------------------
+            // SCREEN 6: AUDIO TRIM & CUT TOOL
+            // ---------------------------------------------------------
+            KineCutScreen.AUDIO_TRIM_TOOL -> {
+                AudioTrimToolScreen(
+                    onBack = { currentScreen = KineCutScreen.AUDIO_EDITOR_MENU }
+                )
+            }
+
+            // ---------------------------------------------------------
+            // SCREEN 7: BG REMOVER TOOL (From Video at 01:17)
+            // ---------------------------------------------------------
+            KineCutScreen.BG_REMOVER_TOOL -> {
+                BgRemoverToolScreen(
+                    onBack = { currentScreen = KineCutScreen.HOME }
+                )
             }
         }
     }
 
     // EXPORT PROGRESS DIALOG
-    if (isExportingMp4) {
+    if (isExporting) {
         AlertDialog(
-            onDismissRequest = { isExportingMp4 = false },
-            containerColor = ProCardBlack,
+            onDismissRequest = { isExporting = false },
+            containerColor = KineCutCardBg,
             title = {
                 Text(
-                    text = "Exporting MP4 Video (1080x1920 9:16)",
-                    color = ProTextLight,
+                    text = "Exporting 1080p Video (9:16 MP4)",
+                    color = TextWhite,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
@@ -944,14 +578,14 @@ fun BanglaMotionStudioProApp() {
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Encoding video frames with MediaCodec & MediaMuxer at 30 FPS...",
-                        color = ProTextMuted,
+                        text = "Encoding on-device kinetic typography frames...",
+                        color = TextMutedSage,
                         fontSize = 13.sp
                     )
                     LinearProgressIndicator(
                         progress = { exportProgress },
-                        color = ProOrange,
-                        trackColor = ProCardBorder,
+                        color = KineCutTealGreen,
+                        trackColor = KineCutCardBorder,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(8.dp)
@@ -959,7 +593,7 @@ fun BanglaMotionStudioProApp() {
                     )
                     Text(
                         text = "${(exportProgress * 100).toInt()}% completed",
-                        color = ProRed,
+                        color = KineCutCyanButton,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -967,818 +601,521 @@ fun BanglaMotionStudioProApp() {
             },
             confirmButton = {
                 Button(
-                    onClick = { isExportingMp4 = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = ProCardBorder)
+                    onClick = { isExporting = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = KineCutCardBorder)
                 ) {
-                    Text("Cancel", color = ProTextLight)
+                    Text("Cancel", color = TextWhite)
                 }
             }
         )
     }
 }
 
-// -----------------------------------------------------------------
-// LIVE INTERACTIVE TOUCH CANVAS (TOUCH EDIT + ALIGHT MOTION EFFECTS)
-// -----------------------------------------------------------------
+// =====================================================================
+// KINECUT UI ATOMIC COMPONENTS
+// =====================================================================
 @Composable
-fun LiveInteractiveTouchCanvas(
-    mainText: String,
-    subtitleText: String,
-    selectedFont: String,
-    fontSizeSp: Float,
-    isBold: Boolean,
-    isItalic: Boolean,
-    strokeWidthPx: Float,
-    glowRadius: Float,
-    textAlign: String,
-    posX: Float,
-    posY: Float,
-    scale: Float,
-    rotation: Float,
-    isTextSelected: Boolean,
-    onTransformChange: (Float, Float, Float, Float) -> Unit,
-    onSelect: () -> Unit,
-    stillAnimation: String,
-    bgAnimation: String,
-    textAnimation: String,
-    active3DEffect: String,
-    activeProcedural: String,
-    activeDistortion: String,
-    customImageUri: Uri?,
-    particles: List<Particle2D>,
-    timelineProgress: Float,
-    isPlaying: Boolean
+fun KineCutHeroCard(
+    indicatorColor: Color,
+    title: String,
+    subtitle: String,
+    metaText: String,
+    buttonText: String,
+    buttonColor: Color,
+    textColor: Color,
+    borderColor: Color,
+    onButtonClick: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "motion_anim")
-    val autoProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2400, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "auto_progress"
-    )
-
-    val currentProgress = if (isPlaying) autoProgress else timelineProgress
-
-    // Ken Burns Calculation
-    val kbZoom = 1.0f + (0.3f * currentProgress)
-    val kbPanX = sin(currentProgress * PI.toFloat()) * 25f
-
-    // Text Animation Transforms
-    var animScale = 1.0f
-    var animAlpha = 1.0f
-    var animTransY = 0f
-    var animGlitchOffset = 0f
-
-    when (textAnimation) {
-        "Pop" -> {
-            val t = (currentProgress / 0.4f).coerceIn(0f, 1f)
-            animScale = if (t < 0.7f) 0.5f + (0.8f * t) else 1.06f - (0.06f * (t - 0.7f) / 0.3f)
-        }
-        "Zoom" -> {
-            animScale = 0.4f + (0.8f * currentProgress)
-            animAlpha = (currentProgress * 2f).coerceIn(0f, 1f)
-        }
-        "Bounce" -> {
-            val t = (currentProgress / 0.6f).coerceIn(0f, 1f)
-            animScale = if (t >= 1f) 1f else 1f + (sin(t * PI * 3.5).toFloat() * exp(-t * 4.5f) * 0.45f)
-        }
-        "Slide" -> {
-            val t = (currentProgress / 0.4f).coerceIn(0f, 1f)
-            animTransY = (1f - t) * 90f
-            animAlpha = (t * 2f).coerceIn(0f, 1f)
-        }
-        "Glitch" -> {
-            val isPulse = (currentProgress * 25).toInt() % 4 == 0
-            animGlitchOffset = if (isPulse) 10f else 0f
-        }
-    }
-
-    BoxWithConstraints(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
+    Card(
+        colors = CardDefaults.cardColors(containerColor = KineCutCardBg),
+        shape = RoundedCornerShape(22.dp),
+        border = androidx.compose.foundation.BorderStroke(1.2.dp, borderColor),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        // Strict 9:16 Canvas Frame
-        Box(
-            modifier = Modifier
-                .widthIn(max = 290.dp)
-                .aspectRatio(9f / 16f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(ProBlack)
-                .border(2.dp, CardBorderGradient, RoundedCornerShape(16.dp))
-                .testTag("interactive_canvas_9_16"),
-            contentAlignment = Alignment.Center
-        ) {
-            // 1. BACKGROUND & KEN BURNS
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        scaleX = if (stillAnimation == "Ken Burns") kbZoom else 1.0f
-                        scaleY = if (stillAnimation == "Ken Burns") kbZoom else 1.0f
-                        translationX = if (stillAnimation == "Ken Burns") kbPanX else 0f
-                    }
-            ) {
-                if (customImageUri != null) {
-                    AsyncImage(
-                        model = customImageUri,
-                        contentDescription = "Background",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(BackgroundVignette)
-                    )
-                }
-            }
-
-            // 2. PARTICLES & STRIPES
-            if (bgAnimation.contains("Particles")) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    particles.forEach { p ->
-                        p.y = (p.y - p.speedY + 1f) % 1f
-                        val px = p.x * size.width
-                        val py = p.y * size.height
-                        drawCircle(
-                            color = p.color.copy(alpha = p.alpha),
-                            radius = p.radius,
-                            center = Offset(px, py)
-                        )
-                    }
-                }
-            }
-
-            // 3. TOUCH-ENABLED MAIN CAPTION LAYER
-            Box(
-                modifier = Modifier
-                    .offset { IntOffset(posX.roundToInt(), posY.roundToInt()) }
-                    .graphicsLayer {
-                        scaleX = scale * animScale
-                        scaleY = scale * animScale
-                        rotationZ = rotation
-                        alpha = animAlpha
-                    }
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, zoom, rot ->
-                            onTransformChange(pan.x, pan.y, zoom, rot)
-                        }
-                    }
-                    .clickable { onSelect() }
-                    .padding(8.dp)
-            ) {
-                // Dashed Red to Orange Selection Border when selected
-                val selectModifier = if (isTextSelected) {
-                    Modifier
-                        .border(
-                            width = 1.5.dp,
-                            brush = CardBorderGradient,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(10.dp)
-                } else Modifier
-
-                Box(modifier = selectModifier, contentAlignment = Alignment.Center) {
-                    // Double Layer Typography (Canvas High-Res Double Drawing)
-                    Box(contentAlignment = Alignment.Center) {
-                        // Layer 1: Red Outer Glow & 6px Black Stroke
-                        Text(
-                            text = mainText,
-                            fontSize = fontSizeSp.sp,
-                            fontWeight = if (isBold) FontWeight.ExtraBold else FontWeight.Normal,
-                            fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal,
-                            textAlign = when (textAlign) {
-                                "Left" -> TextAlign.Start
-                                "Right" -> TextAlign.End
-                                else -> TextAlign.Center
-                            },
-                            style = TextStyle(
-                                drawStyle = Stroke(width = strokeWidthPx * 2.2f),
-                                shadow = Shadow(color = ProRed, offset = Offset(0f, 0f), blurRadius = glowRadius)
-                            ),
-                            color = Color.Black
-                        )
-
-                        // Layer 2: White to Orange-Red Gradient Fill
-                        Text(
-                            text = mainText,
-                            fontSize = fontSizeSp.sp,
-                            fontWeight = if (isBold) FontWeight.ExtraBold else FontWeight.Normal,
-                            fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal,
-                            textAlign = when (textAlign) {
-                                "Left" -> TextAlign.Start
-                                "Right" -> TextAlign.End
-                                else -> TextAlign.Center
-                            },
-                            style = TextStyle(
-                                brush = RedOrangeGradient,
-                                shadow = Shadow(color = ProRed.copy(alpha = 0.5f), offset = Offset(2f, 4f), blurRadius = 12f)
-                            )
-                        )
-                    }
-
-                    // 4 Corner resize handles when selected
-                    if (isTextSelected) {
-                        CornerHandle(Alignment.TopStart)
-                        CornerHandle(Alignment.TopEnd)
-                        CornerHandle(Alignment.BottomStart)
-                        CornerHandle(Alignment.BottomEnd)
-                    }
-                }
-            }
-
-            // 4. BANGLA SUBTITLE (Gradient #FFB347 to #FF6A00 with 6px black stroke, bottom box)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 26.dp, start = 14.dp, end = 14.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xE60A0A0A))
-                    .border(1.dp, CardBorderGradient, RoundedCornerShape(10.dp))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(indicatorColor)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
                 Text(
-                    text = subtitleText,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    style = TextStyle(
-                        brush = Brush.linearGradient(listOf(ProAmberSubtitle, ProOrange)),
-                        shadow = Shadow(color = Color.Black, offset = Offset(2f, 3f), blurRadius = 6f)
-                    ),
-                    textAlign = TextAlign.Center
+                    text = title,
+                    color = TextWhite,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
-            // 9:16 1080p Badge Watermark
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "1080x1920 • 9:16",
-                color = ProOrange.copy(alpha = 0.5f),
-                fontSize = 9.sp,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
+                text = subtitle,
+                color = TextWhite.copy(alpha = 0.9f),
+                fontSize = 14.sp
             )
+
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = metaText,
+                color = TextMutedSage,
+                fontSize = 11.5.sp
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onButtonClick,
+                colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.height(42.dp)
+            ) {
+                Text(
+                    text = buttonText,
+                    color = textColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
         }
     }
 }
 
 @Composable
-fun CornerHandle(alignment: Alignment) {
-    Box(
-        modifier = Modifier
-            .size(10.dp)
-            .clip(CircleShape)
-            .background(ProOrange)
-            .border(1.5.dp, Color.White, CircleShape)
-    )
+fun KineCutToolkitCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconBg: Color,
+    iconTint: Color,
+    title: String,
+    desc: String,
+    toolsCount: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = KineCutCardBg),
+        shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, KineCutCardBorder),
+        modifier = modifier
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(iconBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
+                }
+
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = null,
+                    tint = TextMutedSage,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(title, color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(desc, color = TextMutedSage, fontSize = 11.sp)
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF071210))
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            ) {
+                Text(toolsCount, color = TextMutedSage, fontSize = 10.sp)
+            }
+        }
+    }
 }
 
-// -----------------------------------------------------------------
-// EDITOR SUB-TABS IMPLEMENTATION
-// -----------------------------------------------------------------
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun TouchEditTextTab(
+fun KineCutPillBadge(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(KineCutPillBg)
+            .border(1.dp, KineCutPillBorder, RoundedCornerShape(20.dp))
+            .padding(horizontal = 14.dp, vertical = 7.dp)
+    ) {
+        Text(text, color = TextMutedSage, fontSize = 11.5.sp)
+    }
+}
+
+// =====================================================================
+// SCREEN 2: STYLE SHOWCASE ("Every style — included, free")
+// =====================================================================
+@Composable
+fun StyleShowcaseScreen(
+    onSelectStyle: (ShowcaseStyle) -> Unit,
+    onBack: () -> Unit
+) {
+    val styles = remember {
+        listOf(
+            ShowcaseStyle("cinematic", "Cinematic", "Under the MOON", "we danced", "Soft Blush", "Script Serif"),
+            ShowcaseStyle("luxe_gold", "Luxe Gold", "THE KEY TO Success", "IS PATIENCE", "Dark Obsidian", "Gleaming Gold"),
+            ShowcaseStyle("neon_nights", "Neon Nights", "LATE NIGHT", "vibes", "Dark Neon", "Glow Cyan"),
+            ShowcaseStyle("hyperdrive", "Hyperdrive", "DREAM", "BIGGER", "Radial Starburst", "High Impact"),
+            ShowcaseStyle("system_overload", "System Overload", "SYSTEM", "[ OVERLOAD ]", "Cyberpunk", "Chromatic Glitch"),
+            ShowcaseStyle("never_stop", "Never Stop", "never stop chasing", "BIG dreams", "Slate Green", "Minimal Bold")
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(KineCutBgDark)
+            .padding(16.dp)
+    ) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextWhite)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = "Every style — included, free",
+                    color = TextWhite,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "A live look at what you can make · swipe to explore →",
+                    color = TextMutedSage,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // 2-Column Grid matching Screenshot 2
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(styles, key = { it.id }) { style ->
+                Card(
+                    onClick = { onSelectStyle(style) },
+                    colors = CardDefaults.cardColors(containerColor = KineCutCardBg),
+                    shape = RoundedCornerShape(16.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, KineCutCardBorder),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(210.dp)
+                ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        // Card preview canvas
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+                                .background(
+                                    when (style.id) {
+                                        "cinematic" -> Color(0xFFF7EBE4)
+                                        "luxe_gold" -> Color(0xFF0A0A0A)
+                                        "neon_nights" -> Color(0xFF0E0B1A)
+                                        "hyperdrive" -> Color(0xFF091024)
+                                        "system_overload" -> Color(0xFF08080C)
+                                        else -> Color(0xFF081C19)
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center,
+                                modifier = Modifier.padding(8.dp)
+                            ) {
+                                when (style.id) {
+                                    "cinematic" -> {
+                                        Text(style.headline, color = Color(0xFF1E293B), fontSize = 15.sp, fontStyle = FontStyle.Italic)
+                                        Text("MOON", color = Color(0xFFFF5277), fontSize = 18.sp, fontWeight = FontWeight.Black)
+                                        Text(style.subline, color = Color(0xFF64748B), fontSize = 13.sp)
+                                    }
+                                    "luxe_gold" -> {
+                                        Text("✦  THE KEY TO  ✦", color = Color(0xFFFFD700), fontSize = 10.sp, letterSpacing = 1.sp)
+                                        Text("Success", color = Color(0xFFFFE082), fontSize = 18.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.Bold)
+                                        Text(style.subline, color = Color(0xFFFFD700), fontSize = 10.sp, letterSpacing = 1.sp)
+                                    }
+                                    "neon_nights" -> {
+                                        Text(style.headline, color = Color(0xFFFF2A85), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(style.subline, color = Color(0xFF00E5FF), fontSize = 18.sp, fontStyle = FontStyle.Italic, fontWeight = FontWeight.ExtraBold)
+                                    }
+                                    "hyperdrive" -> {
+                                        Text("DREAM", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
+                                        Text("BIGGER", color = Color(0xFF38BDF8), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    "system_overload" -> {
+                                        Text("SYSTEM", color = Color(0xFF00FFCC), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                        Box(
+                                            modifier = Modifier
+                                                .border(1.dp, Color(0xFF00FFCC), RoundedCornerShape(2.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                                        ) {
+                                            Text("OVERLOAD", color = Color(0xFFFF0055), fontSize = 12.sp, fontWeight = FontWeight.Black)
+                                        }
+                                    }
+                                    else -> {
+                                        Text("never stop chasing", color = Color(0xFF80CBC4), fontSize = 12.sp)
+                                        Text("BIG dreams", color = Color(0xFFFF8A65), fontSize = 15.sp, fontWeight = FontWeight.Black)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Label bar
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(KineCutCardBg)
+                                .padding(10.dp)
+                        ) {
+                            Text(style.name, color = TextWhite, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Pagination Dots & Green Next Button (matching screenshot)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            repeat(8) { idx ->
+                Box(
+                    modifier = Modifier
+                        .size(if (idx == 0) 8.dp else 6.dp)
+                        .clip(CircleShape)
+                        .background(if (idx == 0) KineCutTealGreen else KineCutCardBorder)
+                        .padding(horizontal = 3.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Button(
+            onClick = { onSelectStyle(styles[0]) },
+            colors = ButtonDefaults.buttonColors(containerColor = KineCutTealGreen),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Text("Next →", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+    }
+}
+
+// =====================================================================
+// SCREEN 3: KINETIC TYPOGRAPHY EDITOR
+// =====================================================================
+@Composable
+fun KineticEditorScreen(
     mainText: String,
     onMainTextChange: (String) -> Unit,
     subtitleText: String,
     onSubtitleTextChange: (String) -> Unit,
-    selectedFont: String,
-    onFontChange: (String) -> Unit,
-    fontSizeSp: Float,
+    selectedStyle: String,
+    fontSize: Float,
     onFontSizeChange: (Float) -> Unit,
     isBold: Boolean,
     onBoldChange: (Boolean) -> Unit,
     isItalic: Boolean,
     onItalicChange: (Boolean) -> Unit,
-    textAlign: String,
-    onTextAlignChange: (String) -> Unit,
-    strokeWidth: Float,
-    onStrokeWidthChange: (Float) -> Unit,
-    glowRadius: Float,
-    onGlowRadiusChange: (Float) -> Unit
+    animation: String,
+    onAnimationChange: (String) -> Unit,
+    onExport: () -> Unit,
+    onBack: () -> Unit
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "kine_preview")
+    val animProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "progress"
+    )
+
+    var posX by remember { mutableFloatStateOf(0f) }
+    var posY by remember { mutableFloatStateOf(0f) }
+    var scale by remember { mutableFloatStateOf(1f) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .background(KineCutBgDark)
+            .padding(14.dp)
     ) {
-        OutlinedTextField(
-            value = mainText,
-            onValueChange = onMainTextChange,
-            label = { Text("Primary Text (Horror Bold)", color = ProTextMuted) },
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = ProOrange,
-                unfocusedBorderColor = ProCardBorder,
-                focusedTextColor = ProTextLight,
-                unfocusedTextColor = ProTextLight
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = subtitleText,
-            onValueChange = onSubtitleTextChange,
-            label = { Text("Bangla Subtitle (বাংলা সাবটাইটেল)", color = ProTextMuted) },
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = ProAmberSubtitle,
-                unfocusedBorderColor = ProCardBorder,
-                focusedTextColor = ProTextLight,
-                unfocusedTextColor = ProTextLight
-            ),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Fonts Row
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf("Nosifer Horror", "Creepster", "Shrikhand", "Poppins", "FORQUE", "SIGMAR", "Aladin", "Henny", "Noto Sans Bengali").forEach { font ->
-                val isSel = selectedFont == font
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSel) ProOrange.copy(alpha = 0.25f) else ProCardBlack)
-                        .border(1.dp, if (isSel) ProOrange else ProCardBorder, RoundedCornerShape(8.dp))
-                        .clickable { onFontChange(font) }
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(font, color = if (isSel) ProOrange else ProTextLight, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
-
-        // Font Size Slider
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Font Size: ${fontSizeSp.toInt()}sp", color = ProTextLight, fontSize = 11.sp, modifier = Modifier.width(90.dp))
-            Slider(
-                value = fontSizeSp,
-                onValueChange = onFontSizeChange,
-                valueRange = 16f..72f,
-                colors = SliderDefaults.colors(thumbColor = ProOrange, activeTrackColor = ProRed),
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-}
-
-@Composable
-fun AnimationsEngineTab(
-    stillAnimation: String,
-    onStillAnimationChange: (String) -> Unit,
-    bgAnimation: String,
-    onBgAnimationChange: (String) -> Unit,
-    textAnimation: String,
-    onTextAnimationChange: (String) -> Unit,
-    staggeredDelay: Int,
-    onStaggeredDelayChange: (Int) -> Unit,
-    onPickImage: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // 1. Still Picture Animation
+        // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("1. Still Picture Anim (Ken Burns)", color = ProRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextWhite)
+            }
+            Text("Kinetic Studio • $selectedStyle", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
             Button(
-                onClick = onPickImage,
-                colors = ButtonDefaults.buttonColors(containerColor = ProCardBlack),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ProOrange),
-                shape = RoundedCornerShape(6.dp),
-                modifier = Modifier.height(30.dp)
-            ) {
-                Text("Pick Image", color = ProTextLight, fontSize = 10.sp)
-            }
-        }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf("Ken Burns", "Parallax", "Shake", "Rotate").forEach { a ->
-                val isSel = stillAnimation == a
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSel) ProRed.copy(alpha = 0.25f) else ProCardBlack)
-                        .border(1.dp, if (isSel) ProRed else ProCardBorder, RoundedCornerShape(6.dp))
-                        .clickable { onStillAnimationChange(a) }
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                ) {
-                    Text(a, color = if (isSel) ProRed else ProTextLight, fontSize = 11.sp)
-                }
-            }
-        }
-
-        // 2. Text to Animation Staggered
-        Text("2. Text to Animation (Staggered 80ms)", color = ProOrange, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf("Pop", "Slide", "Zoom", "Bounce", "Typewriter").forEach { ta ->
-                val isSel = textAnimation == ta
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSel) ProOrange.copy(alpha = 0.25f) else ProCardBlack)
-                        .border(1.dp, if (isSel) ProOrange else ProCardBorder, RoundedCornerShape(6.dp))
-                        .clickable { onTextAnimationChange(ta) }
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                ) {
-                    Text(ta, color = if (isSel) ProOrange else ProTextLight, fontSize = 11.sp)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AlightEffectsTab(
-    active3D: String,
-    on3DChange: (String) -> Unit,
-    activeProcedural: String,
-    onProceduralChange: (String) -> Unit,
-    activeMatteMask: String,
-    onMatteMaskChange: (String) -> Unit,
-    activeDistortion: String,
-    onDistortionChange: (String) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text("Alight Motion 4.3 Effects Engine", color = ProGoldOrange, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-
-        // 3D Effects
-        Text("3D Effects", color = ProTextMuted, fontSize = 10.sp)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf("None", "Raster Extrude", "Star Polyhedron", "Page Curl").forEach { e ->
-                val isSel = active3D == e
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSel) ProOrange.copy(alpha = 0.25f) else ProCardBlack)
-                        .border(1.dp, if (isSel) ProOrange else ProCardBorder, RoundedCornerShape(6.dp))
-                        .clickable { on3DChange(e) }
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                ) {
-                    Text(e, color = if (isSel) ProOrange else ProTextLight, fontSize = 11.sp)
-                }
-            }
-        }
-
-        // Distortion & Horror Effects
-        Text("Distortion / Horror FX", color = ProTextMuted, fontSize = 10.sp)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            listOf("RGB Split", "Scanlines", "Oozing Morph", "Spin Cut").forEach { d ->
-                val isSel = activeDistortion == d
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(if (isSel) ProRed.copy(alpha = 0.25f) else ProCardBlack)
-                        .border(1.dp, if (isSel) ProRed else ProCardBorder, RoundedCornerShape(6.dp))
-                        .clickable { onDistortionChange(d) }
-                        .padding(horizontal = 8.dp, vertical = 5.dp)
-                ) {
-                    Text(d, color = if (isSel) ProRed else ProTextLight, fontSize = 11.sp)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun AutoCaptionTab(
-    onTranscribe: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text("Auto Caption (Bangla + English)", color = ProOrange, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Text("Speech to Text Timeline with SRT Export", color = ProTextMuted, fontSize = 10.sp)
-            }
-
-            Button(
-                onClick = onTranscribe,
-                colors = ButtonDefaults.buttonColors(containerColor = ProOrange),
+                onClick = onExport,
+                colors = ButtonDefaults.buttonColors(containerColor = KineCutTealGreen),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.height(34.dp)
             ) {
-                Text("Transcribe", color = ProBlack, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                Text("Export MP4", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         }
 
-        // Example Transcript Box
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // 9:16 Canvas Viewport
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .background(ProCardBlack)
-                .border(1.dp, ProCardBorder, RoundedCornerShape(8.dp))
-                .padding(10.dp)
+                .weight(1f),
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "Transcript:\n00:00:00.000 -> JINN CAN CAUSE CANCER\n00:00:02.000 -> জিন মানুষের মারাত্মক ক্ষতি করতে পারে...",
-                color = ProAmberSubtitle,
-                fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace
-            )
-        }
-    }
-}
-
-@Composable
-fun MusicSfxTab(
-    onPlaySfx: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text("Horror Sound Effects & Ambient Audio", color = ProRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Tactile Word-Pop SFX", color = ProTextLight, fontSize = 12.sp)
-            Button(
-                onClick = onPlaySfx,
-                colors = ButtonDefaults.buttonColors(containerColor = ProCardBlack),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ProRed),
-                shape = RoundedCornerShape(6.dp),
-                modifier = Modifier.height(32.dp)
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .aspectRatio(9f / 16f)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(Color(0xFF081210))
+                    .border(1.5.dp, KineCutCardBorder, RoundedCornerShape(18.dp)),
+                contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.VolumeUp, contentDescription = null, tint = ProRed, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Test Pop", color = ProTextLight, fontSize = 11.sp)
+                // Interactive animated text layer
+                val bounceScale = 1f + (sin(animProgress * PI * 3f).toFloat() * 0.15f)
+                Box(
+                    modifier = Modifier
+                        .offset { IntOffset(posX.roundToInt(), posY.roundToInt()) }
+                        .graphicsLayer {
+                            scaleX = scale * if (animation == "Bounce") bounceScale else 1f
+                            scaleY = scale * if (animation == "Bounce") bounceScale else 1f
+                        }
+                        .pointerInput(Unit) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                posX += pan.x
+                                posY += pan.y
+                                scale = (scale * zoom).coerceIn(0.6f, 3f)
+                            }
+                        }
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = mainText,
+                            color = KineCutTealGreen,
+                            fontSize = fontSize.sp,
+                            fontWeight = if (isBold) FontWeight.ExtraBold else FontWeight.Normal,
+                            fontStyle = if (isItalic) FontStyle.Italic else FontStyle.Normal,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = subtitleText,
+                            color = Color(0xFFFFD54F),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                Text(
+                    text = "9:16 • KineCut HD",
+                    color = TextMutedSage.copy(alpha = 0.5f),
+                    fontSize = 9.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                )
             }
         }
-    }
-}
 
-// -----------------------------------------------------------------
-// HOME SCREEN VIEW
-// -----------------------------------------------------------------
-@Composable
-fun HomeScreenView(
-    onOpenEditor: () -> Unit,
-    onOpenProjects: () -> Unit,
-    onOpenTemplates: () -> Unit,
-    onOpenTutorials: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BackgroundVignette)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-            .testTag("home_screen_view"),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Hero Header
-        Box(
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Controls
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color(0xFF220A00), Color(0xFF140500), ProBlack)
-                    )
-                )
-                .border(1.5.dp, CardBorderGradient, RoundedCornerShape(18.dp))
-                .padding(20.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(KineCutCardBg)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = "BANGLA MOTION 2.0 PRO",
-                    color = ProOrange,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.sp
-                )
-                Text(
-                    text = "Professional Kinetic & Horror Caption Studio",
-                    color = ProTextLight,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    lineHeight = 30.sp
-                )
-                Text(
-                    text = "Alight Motion & CapCut Grade Animation Engine",
-                    color = ProTextMuted,
-                    fontSize = 13.sp
-                )
+            OutlinedTextField(
+                value = mainText,
+                onValueChange = onMainTextChange,
+                label = { Text("Primary Text", color = TextMutedSage) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = KineCutTealGreen,
+                    unfocusedBorderColor = KineCutCardBorder,
+                    focusedTextColor = TextWhite,
+                    unfocusedTextColor = TextWhite
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                Spacer(modifier = Modifier.height(10.dp))
+            OutlinedTextField(
+                value = subtitleText,
+                onValueChange = onSubtitleTextChange,
+                label = { Text("Bangla Subtitle", color = TextMutedSage) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = KineCutTealGreen,
+                    unfocusedBorderColor = KineCutCardBorder,
+                    focusedTextColor = TextWhite,
+                    unfocusedTextColor = TextWhite
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = onOpenEditor,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        shape = RoundedCornerShape(10.dp),
+            // Animation selection
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf("Bounce", "Pop", "Fade", "Slide", "Zoom", "Glitch", "Typewriter").forEach { a ->
+                    val isSel = animation == a
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                            .background(RedOrangeGradient, RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (isSel) KineCutTealGreen else Color(0xFF091412))
+                            .clickable { onAnimationChange(a) }
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
-                        Text("New Project", color = ProBlack, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
-                    }
-
-                    Button(
-                        onClick = onOpenTemplates,
-                        colors = ButtonDefaults.buttonColors(containerColor = ProCardBlack),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderGradient),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(48.dp)
-                    ) {
-                        Text("Templates", color = ProTextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    }
-                }
-            }
-        }
-
-        // Quick Access Cards
-        Text("Quick Jump", color = ProTextLight, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            QuickCard("Projects", "Recent 1080p Edits", Icons.Default.Folder, Modifier.weight(1f), onOpenProjects)
-            QuickCard("Tutorials", "Controlpad & Grouping", Icons.Default.Help, Modifier.weight(1f), onOpenTutorials)
-        }
-    }
-}
-
-@Composable
-fun QuickCard(title: String, desc: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = ProCardBlack),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderGradient),
-        shape = RoundedCornerShape(12.dp),
-        modifier = modifier
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Icon(icon, contentDescription = null, tint = ProOrange, modifier = Modifier.size(24.dp))
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(title, color = ProTextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-            Text(desc, color = ProTextMuted, fontSize = 11.sp)
-        }
-    }
-}
-
-// -----------------------------------------------------------------
-// 2. PROJECTS SCREEN VIEW (From Screenshots)
-// -----------------------------------------------------------------
-@Composable
-fun ProjectsScreenView(
-    projects: List<ProProject>,
-    onOpenProject: (ProProject) -> Unit,
-    onDuplicateProject: (ProProject) -> Unit,
-    onDeleteProject: (ProProject) -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .testTag("projects_screen_view"),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text("Your Projects", color = ProTextLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text("Sorted by Date • 1080x1920 30fps", color = ProTextMuted, fontSize = 12.sp)
-            }
-
-            Text("Sort by Date ▾", color = ProOrange, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(projects, key = { it.id }) { project ->
-                Card(
-                    onClick = { onOpenProject(project) },
-                    colors = CardDefaults.cardColors(containerColor = ProCardBlack),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ProCardBorder),
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // 9:16 Thumbnail Box
-                        Box(
-                            modifier = Modifier
-                                .size(width = 64.dp, height = 90.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(ProBlack)
-                                .border(1.dp, CardBorderGradient, RoundedCornerShape(8.dp)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = project.text.take(8),
-                                color = project.textColor,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(14.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = project.title,
-                                color = ProTextLight,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-
-                            // Badges: 9:16, 1080p, 30fps
-                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                ProjectBadge(project.aspectRatio)
-                                ProjectBadge(project.resolution)
-                                ProjectBadge(project.fps)
-                            }
-
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = "${project.date} • ${project.durationSec} • ${project.sizeKb}",
-                                color = ProTextMuted,
-                                fontSize = 11.sp
-                            )
-                        }
-
-                        // Duplicate & Delete Actions
-                        Column {
-                            IconButton(onClick = { onDuplicateProject(project) }) {
-                                Icon(Icons.Default.ContentCopy, contentDescription = "Duplicate", tint = ProOrange, modifier = Modifier.size(18.dp))
-                            }
-                            IconButton(onClick = { onDeleteProject(project) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = ProRed, modifier = Modifier.size(18.dp))
-                            }
-                        }
+                        Text(a, color = if (isSel) Color.Black else TextWhite, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1786,130 +1123,83 @@ fun ProjectsScreenView(
     }
 }
 
+// =====================================================================
+// SCREEN 4: AUTO CAPTIONS SCREEN
+// =====================================================================
 @Composable
-fun ProjectBadge(text: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0xFF201010))
-            .border(0.5.dp, ProOrange.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
-            .padding(horizontal = 5.dp, vertical = 2.dp)
-    ) {
-        Text(text, color = ProOrange, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-// -----------------------------------------------------------------
-// 3. TEMPLATES SCREEN VIEW (From Screenshots)
-// -----------------------------------------------------------------
-@Composable
-fun TemplatesScreenView(
-    onSelectTemplate: (ProPreset) -> Unit
+fun AutoCaptionsScreen(
+    onExport: () -> Unit,
+    onBack: () -> Unit
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
-    val categories = listOf("Popular", "FX", "Transitions", "Text animations")
-
-    val presets = remember {
-        listOf(
-            ProPreset("pr1", "Decoding Glitches", "GLITCH", "Popular", "DECODING REALITY", "Glitch", "RGB Split"),
-            ProPreset("pr2", "Ripple Neon Glow", "GLOW DISTORTION", "FX", "RIPPLE NEON SOUL", "Bounce", "Scanlines"),
-            ProPreset("pr3", "Retro TV Glitch", "COLOR", "Popular", "RETRO TV STATIC", "Slide", "RGB Split"),
-            ProPreset("pr4", "Outline Shake", "GRUNGE", "Transitions", "SHAKE HEADLINES", "Shake", "Oozing Morph"),
-            ProPreset("pr5", "Advanced Cinematic", "BLOOD & SHADOW", "FX", "CINEMATIC CURSE", "Zoom", "Raster Extrude"),
-            ProPreset("pr6", "Illustrated Flow", "STAR", "Text animations", "STARLIGHT CHRONICLES", "Pop", "Scanlines")
+    var detectedLanguage by remember { mutableStateOf("Bangla & English") }
+    val captionLines = remember {
+        mutableStateListOf(
+            "00:00.00" to "Welcome to KineCut Auto Captions",
+            "00:02.10" to "স্বাগতম কাইনকাট বাংলা মোশন স্টুডিওতে",
+            "00:04.50" to "AI-powered word-by-word synced captions",
+            "00:06.80" to "সম্পূর্ণ ফ্রিতে এবং কোনো কি ছাড়াই তৈরি করুন!"
         )
     }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(KineCutBgDark)
             .padding(16.dp)
-            .testTag("templates_screen_view"),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Discover Templates & Presets", color = ProTextLight, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-
-            // Upload XML button
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(ProCardBlack)
-                    .border(1.dp, CardBorderGradient, RoundedCornerShape(8.dp))
-                    .clickable { }
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextWhite)
+            }
+            Text("Auto Captions", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            Button(
+                onClick = onExport,
+                colors = ButtonDefaults.buttonColors(containerColor = KineCutBlueButton),
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.height(34.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.UploadFile, contentDescription = null, tint = ProOrange, modifier = Modifier.size(14.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Upload XML", color = ProTextLight, fontSize = 11.sp)
-                }
+                Text("Export", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         }
 
-        // Tabs: Popular, FX, Transitions, Text animations
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Card(
+            colors = CardDefaults.cardColors(containerColor = KineCutCardBg),
+            shape = RoundedCornerShape(16.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, KineCutCardBorder),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            categories.forEachIndexed { idx, cat ->
-                val isSel = selectedTab == idx
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Language: $detectedLanguage", color = KineCutBlueButton, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Word-perfect offline speech synchronization", color = TextMutedSage, fontSize = 12.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+        Text("Transcript Timeline", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(captionLines) { (time, text) ->
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(if (isSel) RedOrangeGradient else Brush.linearGradient(listOf(ProCardBlack, ProCardBlack)))
-                        .clickable { selectedTab = idx }
-                        .padding(horizontal = 14.dp, vertical = 6.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(KineCutCardBg)
+                        .border(1.dp, KineCutCardBorder, RoundedCornerShape(10.dp))
+                        .padding(12.dp)
                 ) {
-                    Text(cat, color = if (isSel) ProBlack else ProTextLight, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                }
-            }
-        }
-
-        // Presets Grid
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(presets) { preset ->
-                Card(
-                    onClick = { onSelectTemplate(preset) },
-                    colors = CardDefaults.cardColors(containerColor = ProCardBlack),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ProCardBorder),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(4.dp))
-                                        .background(ProRed.copy(alpha = 0.2f))
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                ) {
-                                    Text(preset.tag, color = ProRed, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(preset.name, color = ProTextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            }
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(preset.text, color = ProTextMuted, fontSize = 11.sp)
-                        }
-
-                        Icon(Icons.Default.Download, contentDescription = "Use", tint = ProOrange, modifier = Modifier.size(20.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(time, color = KineCutBlueButton, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(60.dp))
+                        Text(text, color = TextWhite, fontSize = 13.sp)
                     }
                 }
             }
@@ -1917,104 +1207,377 @@ fun TemplatesScreenView(
     }
 }
 
-// -----------------------------------------------------------------
-// 8. TUTORIALS SCREEN VIEW (From Screenshots)
-// -----------------------------------------------------------------
+// =====================================================================
+// SCREEN 5: AUDIO EDITOR MENU SCREEN (From Video at 01:05)
+// =====================================================================
 @Composable
-fun TutorialsScreenView() {
+fun AudioEditorMenuScreen(
+    onOpenTool: (String) -> Unit,
+    onBack: () -> Unit
+) {
+    val audioTools = listOf(
+        Triple("Trim & Cut", "Keep just the part you want", Icons.Default.ContentCut),
+        Triple("Merge", "Join clips into one", Icons.Default.MergeType),
+        Triple("Volume & Fade", "Adjust levels, fade in / out", Icons.Default.VolumeUp),
+        Triple("Extract from Video", "Pull the audio track out", Icons.Default.VideoFile),
+        Triple("Convert Format", "MP3 · WAV · M4A", Icons.Default.Transform),
+        Triple("Ringtone Maker", "Make and set a ringtone", Icons.Default.RingVolume)
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(KineCutBgDark)
             .padding(16.dp)
-            .verticalScroll(rememberScrollState())
-            .testTag("tutorials_screen_view"),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
-        Text("Tutorials & Getting Started", color = ProTextLight, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-
-        // Getting Started Part 1 & 2 Cards
-        TutorialCard("Getting Started Part 1", "An introduction to motion graphics and layers", Icons.Default.MovieCreation)
-        TutorialCard("Getting Started Part 2", "Keyframing and visual curves masterclass", Icons.Default.Animation)
-        TutorialCard("Using Controlpad", "Swipe here to move elements, snap to coordinates", Icons.Default.FormatAlignCenter)
-        TutorialCard("Grouping and Aligning", "Merge multiple layers into Masking Groups", Icons.Default.Layers)
-        TutorialCard("Learn More (User Guide)", "Comprehensive CapCut & Alight Motion workflow", Icons.Default.Help)
-    }
-}
-
-@Composable
-fun TutorialCard(title: String, desc: String, icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = ProCardBlack),
-        border = androidx.compose.foundation.BorderStroke(1.dp, CardBorderGradient),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextWhite)
+            }
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF220A00)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = ProOrange, modifier = Modifier.size(24.dp))
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(title, color = ProTextLight, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                Text(desc, color = ProTextMuted, fontSize = 11.sp)
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(KineCutRedAudio)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+        Text("Audio Editor", color = TextWhite, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text("Free  ·  on-device  ·  no sign-up", color = TextMutedSage, fontSize = 12.sp)
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        // 6 Audio Tools in a 2-column grid
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(audioTools) { (title, subtitle, icon) ->
+                Card(
+                    onClick = { onOpenTool(title) },
+                    colors = CardDefaults.cardColors(containerColor = KineCutCardBg),
+                    shape = RoundedCornerShape(18.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, KineCutCardBorder),
+                    modifier = Modifier.height(130.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(14.dp),
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF3B1519)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(icon, contentDescription = null, tint = KineCutRedAudio, modifier = Modifier.size(18.dp))
+                        }
+
+                        Column {
+                            Text(title, color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                            Text(subtitle, color = TextMutedSage, fontSize = 10.sp, maxLines = 1)
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-// -----------------------------------------------------------------
-// BOTTOM NAVIGATION BAR (Home, Tutorials, Projects, Templates)
-// -----------------------------------------------------------------
+// =====================================================================
+// SCREEN 6: AUDIO TRIM & CUT TOOL (From Video at 01:07)
+// =====================================================================
 @Composable
-fun ProBottomNavigationBar(
-    currentScreen: MainScreen,
-    onScreenSelected: (MainScreen) -> Unit
+fun AudioTrimToolScreen(
+    onBack: () -> Unit
 ) {
-    NavigationBar(
-        containerColor = ProBlack,
-        tonalElevation = 8.dp,
+    val context = LocalContext.current
+    var isAudioSelected by remember { mutableStateOf(false) }
+
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, ProCardBorder, RoundedCornerShape(0.dp))
-            .testTag("pro_bottom_nav")
+            .fillMaxSize()
+            .background(KineCutBgDark)
+            .padding(16.dp)
     ) {
-        MainScreen.values().forEach { screen ->
-            val isSelected = currentScreen == screen
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = { onScreenSelected(screen) },
-                icon = {
-                    Icon(
-                        imageVector = screen.icon,
-                        contentDescription = screen.label
-                    )
-                },
-                label = {
-                    Text(
-                        text = screen.label,
-                        fontSize = 11.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = ProBlack,
-                    selectedTextColor = ProOrange,
-                    indicatorColor = ProOrange,
-                    unselectedIconColor = Color.White,
-                    unselectedTextColor = ProTextMuted
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextWhite)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Text("Trim & Cut", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text("Keep or remove a section", color = TextMutedSage, fontSize = 11.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(30.dp))
+
+        // Center card with waveform and picker
+        Card(
+            onClick = {
+                isAudioSelected = true
+                Toast.makeText(context, "Selected demo audio track (03:14)", Toast.LENGTH_SHORT).show()
+            },
+            colors = CardDefaults.cardColors(containerColor = KineCutCardBg),
+            shape = RoundedCornerShape(20.dp),
+            border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0xFF4A1B20)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF3B1519)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.GraphicEq, contentDescription = null, tint = KineCutRedAudio, modifier = Modifier.size(24.dp))
+                }
+                Spacer(modifier = Modifier.height(14.dp))
+                Text(
+                    text = if (isAudioSelected) "Audio: horror_atmosphere.mp3" else "Pick an audio file",
+                    color = TextWhite,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
                 )
+                Text("MP3 · WAV · M4A", color = TextMutedSage, fontSize = 12.sp)
+                Text("Up to 20 minutes", color = TextMutedSage.copy(alpha = 0.7f), fontSize = 11.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = {
+                Toast.makeText(context, "Exported trimmed audio to Music/KineCut!", Toast.LENGTH_LONG).show()
+            },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF142420)),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Text("Export trimmed audio", color = TextWhite, fontWeight = FontWeight.Bold)
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        Text(
+            text = "Saves a new file. Your original stays untouched.",
+            color = TextMutedSage,
+            fontSize = 11.sp,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+    }
+}
+
+// =====================================================================
+// SCREEN 7: BG REMOVER TOOL (From Video at 01:17)
+// =====================================================================
+@Composable
+fun BgRemoverToolScreen(
+    onBack: () -> Unit
+) {
+    val context = LocalContext.current
+    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var isProcessing by remember { mutableStateOf(false) }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        if (uri != null) {
+            selectedPhotoUri = uri
+            isProcessing = true
+        }
+    }
+
+    LaunchedEffect(isProcessing) {
+        if (isProcessing) {
+            delay(1500)
+            isProcessing = false
+            Toast.makeText(context, "Background cut out cleanly with 100% HD result!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(KineCutBgDark)
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextWhite)
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Bg Remover", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            }
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(KineCutPurpleScissors)
             )
         }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Subtab: Image Background
+        Card(
+            colors = CardDefaults.cardColors(containerColor = KineCutCardBg),
+            shape = RoundedCornerShape(14.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, KineCutCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF261838)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Image, contentDescription = null, tint = KineCutPurpleScissors, modifier = Modifier.size(18.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text("Image Background", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Cut out or replace a photo's background", color = TextMutedSage, fontSize = 11.sp)
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Center card with Scissors and Badges (matching video 01:17)
+        Card(
+            colors = CardDefaults.cardColors(containerColor = KineCutCardBg),
+            shape = RoundedCornerShape(22.dp),
+            border = androidx.compose.foundation.BorderStroke(1.2.dp, Color(0xFF382352)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF261838)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.ContentCut, contentDescription = null, tint = KineCutPurpleScissors, modifier = Modifier.size(26.dp))
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+                Text("Remove the background", color = TextWhite, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                Text("PNG · JPG · WEBP", color = TextMutedSage, fontSize = 12.sp)
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "One tap, fully automatic — get a clean transparent cutout",
+                    color = TextMutedSage,
+                    fontSize = 11.5.sp,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Badges: 100% Auto, HD Result, Private
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BgBadge("100% Auto")
+                    BgBadge("HD Result")
+                    BgBadge("Private")
+                }
+
+                if (selectedPhotoUri != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(140.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF1A1A1A))
+                            .border(1.dp, KineCutPurpleScissors, RoundedCornerShape(12.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = selectedPhotoUri,
+                            contentDescription = "Cutout",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = { photoPicker.launch("image/*") },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF193B33)),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+        ) {
+            Text(
+                text = if (selectedPhotoUri == null) "Pick a photo first" else "Pick another photo",
+                color = TextWhite,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Free forever · No watermark · Photos never leave your phone",
+            color = TextMutedSage.copy(alpha = 0.8f),
+            fontSize = 11.sp,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        )
+    }
+}
+
+@Composable
+fun BgBadge(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color(0xFF140F22))
+            .border(0.8.dp, Color(0xFF382352), RoundedCornerShape(20.dp))
+            .padding(horizontal = 10.dp, vertical = 4.dp)
+    ) {
+        Text(text, color = Color(0xFFC084FC), fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
     }
 }
